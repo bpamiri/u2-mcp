@@ -248,12 +248,35 @@ class ConnectionManager:
             command_text: TCL command to execute
 
         Returns:
-            Command response string
+            Command response string (sanitized for display)
         """
         session = self.get_session()
         cmd = uopy.Command(command_text, session=session)
         cmd.run()
-        return str(cmd.response) if cmd.response else ""
+        response = str(cmd.response) if cmd.response else ""
+        return self._sanitize_output(response)
+
+    def _sanitize_output(self, text: str) -> str:
+        """Clean up Universe output for display.
+
+        Removes/replaces control characters that cause display issues.
+
+        Args:
+            text: Raw output from Universe
+
+        Returns:
+            Cleaned text suitable for JSON/display
+        """
+        # Replace carriage returns with newlines
+        text = text.replace("\r\n", "\n").replace("\r", "\n")
+        # Remove form feeds (page breaks)
+        text = text.replace("\f", "\n")
+        # Remove other control characters except newline and tab
+        cleaned = []
+        for char in text:
+            if char == "\n" or char == "\t" or (ord(char) >= 32 and ord(char) < 127) or ord(char) >= 128:
+                cleaned.append(char)
+        return "".join(cleaned)
 
     def create_select_list(self) -> Any:
         """Create a new select list object.
