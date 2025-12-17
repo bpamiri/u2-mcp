@@ -186,7 +186,7 @@ TIPS FOR AI-GENERATED QUERIES
 """
 
 
-@mcp.resource("retrieve_syntax")
+@mcp.resource("u2://retrieve_syntax")
 def get_retrieve_syntax() -> str:
     """RetrieVe/UniQuery command reference and syntax help.
 

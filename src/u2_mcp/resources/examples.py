@@ -179,7 +179,7 @@ TIPS FOR SUCCESS
 """
 
 
-@mcp.resource("query_examples")
+@mcp.resource("u2://query_examples")
 def get_query_examples() -> str:
     """Example RetrieVe/UniQuery queries for common patterns.
 
