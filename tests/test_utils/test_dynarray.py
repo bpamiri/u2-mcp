@@ -1,6 +1,5 @@
 """Tests for u2_mcp.utils.dynarray module."""
 
-
 from u2_mcp.utils.dynarray import (
     AM,
     SM,

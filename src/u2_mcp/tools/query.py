@@ -215,8 +215,7 @@ def validate_query(query: str) -> dict[str, Any]:
     # Check if command is allowed
     if first_word not in ALLOWED_QUERY_COMMANDS:
         result["error"] = (
-            f"Command '{first_word}' not allowed. "
-            "Use: LIST, SELECT, SORT, COUNT, etc."
+            f"Command '{first_word}' not allowed. Use: LIST, SELECT, SORT, COUNT, etc."
         )
         return result
 
@@ -241,12 +240,7 @@ def validate_query(query: str) -> dict[str, Any]:
     result["file"] = file_name
 
     # Check for common issues - proper quoting of string values
-    if (
-        "WITH" in query_upper
-        and '= ' in query
-        and '"' not in query
-        and "'" not in query
-    ):
+    if "WITH" in query_upper and "= " in query and '"' not in query and "'" not in query:
         warnings.append("String values should be quoted with double quotes")
         suggestions.append('Example: WITH STATE = "CA" (not WITH STATE = CA)')
 
@@ -254,7 +248,7 @@ def validate_query(query: str) -> dict[str, Any]:
     if first_word == "LIST" and "WITH" in query_upper:
         # Check if there are field names after file name but before WITH
         with_idx = query_upper.index("WITH")
-        between = query_upper[len(first_word):with_idx].strip()
+        between = query_upper[len(first_word) : with_idx].strip()
         if between == file_name:
             suggestions.append(
                 "Consider specifying output fields: LIST FILE field1 field2 WITH ..."
@@ -265,11 +259,7 @@ def validate_query(query: str) -> dict[str, Any]:
         suggestions.append("Consider adding BY clause for sorted results: ... BY field_name")
 
     # Check for potential multivalue explosion
-    if (
-        "BY.EXP" not in query_upper
-        and "BY-EXP" not in query_upper
-        and first_word == "LIST"
-    ):
+    if "BY.EXP" not in query_upper and "BY-EXP" not in query_upper and first_word == "LIST":
         suggestions.append("Use BY.EXP to explode multivalues: ... BY.EXP mv_field")
 
     result["valid"] = True

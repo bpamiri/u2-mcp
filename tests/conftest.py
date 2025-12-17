@@ -76,15 +76,7 @@ def sample_record_data() -> dict[str, Any]:
         "simple": "John Doe" + AM + "123 Main St" + AM + "CA",
         "multivalue": "John Doe" + AM + "555-1234" + VM + "555-5678" + AM + "CA",
         "complex": (
-            "ACME Corp"
-            + AM
-            + "John Smith"
-            + VM
-            + "Jane Doe"
-            + AM
-            + "555-1111"
-            + VM
-            + "555-2222"
+            "ACME Corp" + AM + "John Smith" + VM + "Jane Doe" + AM + "555-1111" + VM + "555-2222"
         ),
     }
 

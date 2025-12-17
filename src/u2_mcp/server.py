@@ -137,7 +137,6 @@ from .resources import examples, knowledge, syntax_help  # noqa: E402, F401
 from .tools import (  # noqa: E402, F401
     dictionary,
     files,
-    knowledge as knowledge_tools,
     query,
     subroutine,
     transaction,
@@ -203,9 +202,11 @@ def main() -> None:
     # Override config with CLI args if provided
     if args.host:
         import os
+
         os.environ["U2_HTTP_HOST"] = args.host
     if args.port:
         import os
+
         os.environ["U2_HTTP_PORT"] = str(args.port)
 
     if args.http:

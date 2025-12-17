@@ -5,13 +5,11 @@ future interactions. Knowledge is stored as a markdown file that
 Claude can read and update.
 """
 
-import json
 import os
 import re
 from datetime import datetime
 from pathlib import Path
 from typing import Any
-
 
 # Default knowledge file location
 DEFAULT_KNOWLEDGE_PATH = Path.home() / ".u2-mcp" / "knowledge.md"
@@ -159,7 +157,9 @@ class KnowledgeStore:
             if append:
                 # Append to existing content
                 existing_content = "\n".join(lines[topic_idx:end_idx])
-                formatted_content = f"{existing_content}\n\n### Addition ({timestamp})\n\n{content.strip()}\n"
+                formatted_content = (
+                    f"{existing_content}\n\n### Addition ({timestamp})\n\n{content.strip()}\n"
+                )
 
             # Replace the section
             new_lines = lines[:topic_idx] + formatted_content.split("\n") + lines[end_idx:]
@@ -239,26 +239,19 @@ class KnowledgeStore:
         lines = content.split("\n")
 
         current_topic = None
-        topic_start = 0
-
-        for i, line in enumerate(lines):
-            if re.match(r"^## ", line):
-                current_topic = line[3:].strip()
-                topic_start = i
-
-        # Re-scan looking for matches
-        current_topic = None
         matches_in_topic: list[str] = []
 
-        for i, line in enumerate(lines):
+        for line in lines:
             if re.match(r"^## ", line):
                 # Save previous topic matches
                 if current_topic and matches_in_topic:
-                    results.append({
-                        "topic": current_topic,
-                        "matches": matches_in_topic[:5],  # Limit to 5 matches per topic
-                        "match_count": len(matches_in_topic),
-                    })
+                    results.append(
+                        {
+                            "topic": current_topic,
+                            "matches": matches_in_topic[:5],  # Limit to 5 matches per topic
+                            "match_count": len(matches_in_topic),
+                        }
+                    )
                 current_topic = line[3:].strip()
                 matches_in_topic = []
             elif current_topic and query_lower in line.lower():
@@ -266,11 +259,13 @@ class KnowledgeStore:
 
         # Don't forget last topic
         if current_topic and matches_in_topic:
-            results.append({
-                "topic": current_topic,
-                "matches": matches_in_topic[:5],
-                "match_count": len(matches_in_topic),
-            })
+            results.append(
+                {
+                    "topic": current_topic,
+                    "matches": matches_in_topic[:5],
+                    "match_count": len(matches_in_topic),
+                }
+            )
 
         return results
 

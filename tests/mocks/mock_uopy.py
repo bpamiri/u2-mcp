@@ -59,9 +59,7 @@ class MockCommand:
         elif cmd_upper.startswith("LISTFILES"):
             self._response = "CUSTOMERS\nORDERS\nPRODUCTS\n3 files listed."
         elif cmd_upper.startswith("FILE.STAT"):
-            self._response = (
-                "File Type: Dynamic\n" "Modulo: 101\n" "Separation: 2\n" "Record Count: 500"
-            )
+            self._response = "File Type: Dynamic\nModulo: 101\nSeparation: 2\nRecord Count: 500"
         elif cmd_upper.startswith("LIST") or cmd_upper.startswith("SORT"):
             self._response = "ID001  Value1  Value2\nID002  Value3  Value4\n2 records listed."
         elif cmd_upper.startswith("COUNT"):

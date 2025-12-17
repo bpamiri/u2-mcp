@@ -274,7 +274,12 @@ class ConnectionManager:
         # Remove other control characters except newline and tab
         cleaned = []
         for char in text:
-            if char == "\n" or char == "\t" or (ord(char) >= 32 and ord(char) < 127) or ord(char) >= 128:
+            if (
+                char == "\n"
+                or char == "\t"
+                or (ord(char) >= 32 and ord(char) < 127)
+                or ord(char) >= 128
+            ):
                 cleaned.append(char)
         return "".join(cleaned)
 

@@ -1,6 +1,5 @@
 """Configuration management for u2-mcp using pydantic-settings."""
 
-
 from pydantic import Field, computed_field, field_validator
 from pydantic_settings import BaseSettings
 

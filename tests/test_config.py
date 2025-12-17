@@ -105,8 +105,9 @@ class TestU2Config:
             "U2_ACCOUNT": "ACC",
             "U2_SERVICE": "invalid",
         }
-        with patch.dict(os.environ, env_vars, clear=True), pytest.raises(
-            ValueError, match="uvcs.*udcs"
+        with (
+            patch.dict(os.environ, env_vars, clear=True),
+            pytest.raises(ValueError, match="uvcs.*udcs"),
         ):
             U2Config()
 
@@ -116,7 +117,5 @@ class TestU2Config:
             "U2_HOST": "host",
             # Missing U2_USER, U2_PASSWORD, U2_ACCOUNT
         }
-        with patch.dict(os.environ, env_vars, clear=True), pytest.raises(
-            (ValueError, TypeError)
-        ):
+        with patch.dict(os.environ, env_vars, clear=True), pytest.raises((ValueError, TypeError)):
             U2Config()

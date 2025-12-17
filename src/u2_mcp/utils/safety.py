@@ -1,6 +1,5 @@
 """Command validation and safety controls for u2-mcp."""
 
-
 # Default blocklist of dangerous TCL commands
 DEFAULT_BLOCKED_COMMANDS: set[str] = {
     "DELETE.FILE",

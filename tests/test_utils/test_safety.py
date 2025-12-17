@@ -1,6 +1,5 @@
 """Tests for u2_mcp.utils.safety module."""
 
-
 from u2_mcp.utils.safety import ALLOWED_QUERY_COMMANDS, CommandValidator
 
 
