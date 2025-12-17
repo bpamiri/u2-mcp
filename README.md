@@ -1,6 +1,6 @@
 # u2-mcp
 
-[![PyPI version](https://badge.fury.io/py/u2-mcp.svg)](https://badge.fury.io/py/u2-mcp)
+[![PyPI version](https://img.shields.io/pypi/v/u2-mcp.svg)](https://pypi.org/project/u2-mcp/)
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 [![Python](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
 
