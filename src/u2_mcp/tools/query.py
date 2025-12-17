@@ -41,17 +41,13 @@ def execute_query(query: str, max_rows: int | None = None) -> dict[str, Any]:
     effective_max = min(max_rows or config.max_records, config.max_records)
 
     try:
-        session = manager.get_session()
-        cmd = session.command()
-
         # Add SAMPLE clause for LIST commands to limit results
         query_upper = query.upper().strip()
         modified_query = query
         if query_upper.startswith("LIST") and "SAMPLE" not in query_upper:
             modified_query = f"{query} SAMPLE {effective_max}"
 
-        cmd.exec(modified_query)
-        output = cmd.response
+        output = manager.execute_command(modified_query)
 
         return {
             "query": query,
@@ -97,13 +93,11 @@ def execute_tcl(command: str) -> dict[str, Any]:
         return {"error": error_msg, "command": command}
 
     try:
-        session = manager.get_session()
-        cmd = session.command()
-        cmd.exec(command)
+        output = manager.execute_command(command)
 
         return {
             "command": command,
-            "output": cmd.response,
+            "output": output,
             "status": "success",
         }
 
@@ -141,15 +135,22 @@ def get_select_list(query: str, max_ids: int | None = None) -> dict[str, Any]:
     effective_max = min(max_ids or config.max_records, config.max_records)
 
     try:
-        session = manager.get_session()
-        select = session.select()
-        select.exec(query)
+        # Execute the SELECT query
+        manager.execute_command(query)
+
+        # Create a List object to iterate through results
+        select = manager.create_select_list()
 
         record_ids: list[str] = []
         truncated = False
+        count = 0
 
-        for count, record_id in enumerate(select, start=1):
-            record_ids.append(record_id)
+        while True:
+            record_id = select.next()
+            if record_id is None or str(record_id) == "":
+                break
+            count += 1
+            record_ids.append(str(record_id))
             if count >= effective_max:
                 truncated = True
                 break

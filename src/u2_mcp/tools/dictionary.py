@@ -92,28 +92,30 @@ def list_dictionary(file_name: str, include_system: bool = False) -> dict[str, A
     manager = get_connection_manager()
 
     try:
-        session = manager.get_session()
         dict_file_name = f"DICT {file_name}"
 
-        # Get list of dictionary item names
-        select = session.select()
+        # Get list of dictionary item names via SELECT command
         if include_system:
-            select.exec(f"SELECT {dict_file_name}")
+            manager.execute_command(f"SELECT {dict_file_name}")
         else:
-            select.exec(f'SELECT {dict_file_name} WITH @ID NOT LIKE "@..."')
+            manager.execute_command(f'SELECT {dict_file_name} WITH @ID NOT LIKE "@..."')
 
+        select = manager.create_select_list()
         items: list[dict[str, Any]] = []
-        dict_file = session.open(dict_file_name)
+        dict_file = manager.open_file(dict_file_name)
 
-        for item_id in select:
+        while True:
+            item_id = select.next()
+            if item_id is None or str(item_id) == "":
+                break
             try:
-                raw = dict_file.read(item_id)
+                raw = dict_file.read(str(item_id))
                 if raw:
                     parsed = parse_record(str(raw))
-                    item = _parse_dict_item(item_id, parsed)
+                    item = _parse_dict_item(str(item_id), parsed)
                     items.append(item)
             except Exception as e:
-                items.append({"name": item_id, "type": "error", "error": str(e)})
+                items.append({"name": str(item_id), "type": "error", "error": str(e)})
 
         # Sort by type, then by field number for D-types
         def sort_key(item: dict[str, Any]) -> tuple[int, int, str]:
@@ -156,9 +158,8 @@ def get_field_definition(file_name: str, field_name: str) -> dict[str, Any]:
     manager = get_connection_manager()
 
     try:
-        session = manager.get_session()
         dict_file_name = f"DICT {file_name}"
-        dict_file = session.open(dict_file_name)
+        dict_file = manager.open_file(dict_file_name)
 
         raw = dict_file.read(field_name)
 
@@ -196,31 +197,30 @@ def describe_file(file_name: str) -> dict[str, Any]:
     manager = get_connection_manager()
 
     try:
-        session = manager.get_session()
-
         # Get file statistics
-        cmd = session.command()
-        cmd.exec(f"FILE.STAT {file_name}")
-        file_stat_output = cmd.response
+        file_stat_output = manager.execute_command(f"FILE.STAT {file_name}")
 
         # Get dictionary items (D and I types only for cleaner output)
         dict_file_name = f"DICT {file_name}"
-        dict_file = session.open(dict_file_name)
+        dict_file = manager.open_file(dict_file_name)
 
-        select = session.select()
-        select.exec(f'SELECT {dict_file_name} WITH @ID NOT LIKE "@..."')
+        manager.execute_command(f'SELECT {dict_file_name} WITH @ID NOT LIKE "@..."')
+        select = manager.create_select_list()
 
         fields: list[dict[str, Any]] = []
-        for item_id in select:
+        while True:
+            item_id = select.next()
+            if item_id is None or str(item_id) == "":
+                break
             try:
-                raw = dict_file.read(item_id)
+                raw = dict_file.read(str(item_id))
                 if raw:
                     parsed = parse_record(str(raw))
                     item_type = str(parsed.get("1", "")).upper()
 
                     # Only include data-defining items
                     if item_type in ("D", "I", "A"):
-                        item = _parse_dict_item(item_id, parsed)
+                        item = _parse_dict_item(str(item_id), parsed)
                         fields.append(item)
             except Exception:
                 pass
@@ -290,17 +290,19 @@ def analyze_file_structure(
     max_records = min(sample_size, manager.config.max_records)
 
     try:
-        session = manager.get_session()
         file_handle = manager.open_file(file_name)
 
         # Get sample of record IDs
-        select = session.select()
-        select.exec(f"SELECT {file_name} SAMPLE {max_records}")
+        manager.execute_command(f"SELECT {file_name} SAMPLE {max_records}")
+        select = manager.create_select_list()
 
         field_stats: dict[str, dict[str, Any]] = {}
         records_analyzed = 0
 
-        for record_id in select:
+        while True:
+            record_id = select.next()
+            if record_id is None or str(record_id) == "":
+                break
             try:
                 raw = file_handle.read(record_id)
                 if raw:
@@ -376,23 +378,15 @@ def get_account_info() -> dict[str, Any]:
     manager = get_connection_manager()
 
     try:
-        session = manager.get_session()
-        cmd = session.command()
-
         # Get current account info
-        cmd.exec("WHO")
-        who_output = cmd.response
+        who_output = manager.execute_command("WHO")
 
         # Get system date/time
-        cmd.exec("DATE")
-        date_output = cmd.response
-
-        cmd.exec("TIME")
-        time_output = cmd.response
+        date_output = manager.execute_command("DATE")
+        time_output = manager.execute_command("TIME")
 
         # Get file list
-        cmd.exec("LISTFILES")
-        files_output = cmd.response
+        files_output = manager.execute_command("LISTFILES")
 
         # Parse file list
         files = []

@@ -105,17 +105,15 @@ def list_files(pattern: str = "*") -> dict[str, Any]:
     manager = get_connection_manager()
 
     try:
-        session = manager.get_session()
-        cmd = session.command()
-
         if pattern == "*":
-            cmd.exec("LISTFILES")
+            output = manager.execute_command("LISTFILES")
         else:
             # Convert simple wildcard to UniQuery LIKE pattern
             like_pattern = pattern.replace("*", "...")
-            cmd.exec(f'SELECT VOC WITH @ID LIKE "{like_pattern}" AND WITH F1 = "F"')
+            output = manager.execute_command(
+                f'SELECT VOC WITH @ID LIKE "{like_pattern}" AND WITH F1 = "F"'
+            )
 
-        output = cmd.response
         files = _parse_file_list(output)
 
         return {
@@ -342,10 +340,7 @@ def get_file_info(file_name: str) -> dict[str, Any]:
     manager = get_connection_manager()
 
     try:
-        session = manager.get_session()
-        cmd = session.command()
-        cmd.exec(f"FILE.STAT {file_name}")
-        output = cmd.response
+        output = manager.execute_command(f"FILE.STAT {file_name}")
 
         info = _parse_file_stat(output)
         info["file"] = file_name

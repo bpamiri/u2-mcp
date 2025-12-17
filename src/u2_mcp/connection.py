@@ -1,9 +1,14 @@
 """Connection management for Universe/UniData databases."""
 
 import logging
+import socket
 from dataclasses import dataclass
 from datetime import datetime
 from typing import TYPE_CHECKING, Any
+
+# Workaround for uopy bug on macOS - TCP_KEEPIDLE doesn't exist on macOS
+if not hasattr(socket, "TCP_KEEPIDLE"):
+    socket.TCP_KEEPIDLE = socket.TCP_KEEPALIVE  # type: ignore[attr-defined]
 
 import uopy
 
@@ -136,7 +141,7 @@ class ConnectionManager:
             self._open_files.clear()
 
             if self._session:
-                self._session.disconnect()
+                self._session.close()
                 self._session = None
 
             self._connections[name].is_active = False
@@ -184,11 +189,11 @@ class ConnectionManager:
         # At this point session should be set
         assert self._session is not None
 
-        # Verify connection is still alive with a simple command
+        # Verify connection is still alive with a health check
         try:
-            cmd = self._session.command()
-            cmd.exec("WHO")
-        except uopy.UOError:
+            if not self._session.is_active:
+                raise uopy.UOError("Session not active")
+        except (uopy.UOError, AttributeError):
             logger.warning("Connection lost, attempting reconnect")
             self._session = None
             self._open_files.clear()
@@ -216,7 +221,7 @@ class ConnectionManager:
 
         session = self.get_session()
         try:
-            file_handle = session.open(file_name)
+            file_handle = uopy.File(file_name, session=session)
             self._open_files[file_name] = file_handle
             return file_handle
         except uopy.UOError as e:
@@ -236,6 +241,29 @@ class ConnectionManager:
             return True
         return False
 
+    def execute_command(self, command_text: str) -> str:
+        """Execute a TCL command and return the response.
+
+        Args:
+            command_text: TCL command to execute
+
+        Returns:
+            Command response string
+        """
+        session = self.get_session()
+        cmd = uopy.Command(command_text, session=session)
+        cmd.run()
+        return str(cmd.response) if cmd.response else ""
+
+    def create_select_list(self) -> Any:
+        """Create a new select list object.
+
+        Returns:
+            uopy.List object for select operations
+        """
+        session = self.get_session()
+        return uopy.List(session=session)
+
     def begin_transaction(self) -> bool:
         """Begin a database transaction.
 
@@ -250,7 +278,7 @@ class ConnectionManager:
 
         session = self.get_session()
         try:
-            session.transaction_start()
+            session.tx_start()
             self._transaction.in_transaction = True
             self._transaction.started_at = datetime.now()
             logger.info("Transaction started")
@@ -273,7 +301,7 @@ class ConnectionManager:
 
         session = self.get_session()
         try:
-            session.transaction_commit()
+            session.tx_commit()
             self._transaction = TransactionState()
             logger.info("Transaction committed")
             return True
@@ -295,7 +323,7 @@ class ConnectionManager:
 
         session = self.get_session()
         try:
-            session.transaction_rollback()
+            session.tx_rollback()
             self._transaction = TransactionState()
             logger.info("Transaction rolled back")
             return True

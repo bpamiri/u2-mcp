@@ -3,6 +3,8 @@
 import logging
 from typing import Any
 
+import uopy
+
 from ..server import get_connection_manager, mcp
 
 logger = logging.getLogger(__name__)
@@ -53,21 +55,21 @@ def call_subroutine(
         session = manager.get_session()
 
         # Create subroutine object with specified number of arguments
-        sub = session.subroutine(name, actual_num_args)
+        sub = uopy.Subroutine(name, actual_num_args, session=session)
 
         # Set input arguments
         for i, arg in enumerate(args):
-            sub.args[i] = str(arg) if arg is not None else ""
+            sub.set_arg(i, str(arg) if arg is not None else "")
 
         # Initialize remaining args as empty strings
         for i in range(len(args), actual_num_args):
-            sub.args[i] = ""
+            sub.set_arg(i, "")
 
         # Call the subroutine
         sub.call()
 
         # Collect output arguments
-        args_out = [sub.args[i] for i in range(actual_num_args)]
+        args_out = [sub.get_arg(i) for i in range(actual_num_args)]
 
         return {
             "status": "success",
@@ -99,19 +101,14 @@ def list_catalog(pattern: str = "*") -> dict[str, Any]:
     manager = get_connection_manager()
 
     try:
-        session = manager.get_session()
-        cmd = session.command()
-
         # Use CATALOG command to list programs
         # Different Universe versions may have different syntax
         if pattern == "*":
-            cmd.exec("CATALOG")
+            output = manager.execute_command("CATALOG")
         else:
             # Convert wildcard to LIKE pattern
             like_pattern = pattern.replace("*", "...")
-            cmd.exec(f'CATALOG "{like_pattern}"')
-
-        output = cmd.response
+            output = manager.execute_command(f'CATALOG "{like_pattern}"')
 
         # Parse catalog output to extract program names
         programs = _parse_catalog_output(output)
@@ -119,16 +116,18 @@ def list_catalog(pattern: str = "*") -> dict[str, Any]:
         # If CATALOG command doesn't work well, try alternative
         if not programs:
             # Try SELECT from VOC for cataloged items
-            cmd.exec('SELECT VOC WITH F1 = "V" AND WITH F2 LIKE "...CATALOG..."')
+            manager.execute_command('SELECT VOC WITH F1 = "V" AND WITH F2 LIKE "...CATALOG..."')
 
             # Or try the catalog pointer file
             try:
-                cmd.exec("SELECT &SYSCAT&")
-                select = session.select()
-                select.exec("SELECT &SYSCAT&")
-                for prog_name in select:
-                    if pattern == "*" or _matches_pattern(prog_name, pattern):
-                        programs.append(prog_name)
+                manager.execute_command("SELECT &SYSCAT&")
+                select = manager.create_select_list()
+                while True:
+                    prog_name = select.next()
+                    if prog_name is None or str(prog_name) == "":
+                        break
+                    if pattern == "*" or _matches_pattern(str(prog_name), pattern):
+                        programs.append(str(prog_name))
             except Exception:
                 pass
 
