@@ -1,0 +1,304 @@
+"""Connection management for Universe/UniData databases."""
+
+import logging
+from dataclasses import dataclass
+from datetime import datetime
+from typing import TYPE_CHECKING, Any
+
+import uopy
+
+from .config import U2Config
+
+if TYPE_CHECKING:
+    pass
+
+logger = logging.getLogger(__name__)
+
+
+@dataclass
+class ConnectionInfo:
+    """Information about an active database connection."""
+
+    name: str
+    host: str
+    account: str
+    service: str
+    connected_at: datetime
+    is_active: bool = True
+
+
+@dataclass
+class TransactionState:
+    """Tracks the current transaction state."""
+
+    in_transaction: bool = False
+    started_at: datetime | None = None
+
+
+class ConnectionError(Exception):
+    """Raised when a database connection fails."""
+
+    pass
+
+
+class FileNotFoundError(Exception):
+    """Raised when a Universe file cannot be opened."""
+
+    pass
+
+
+class ConnectionManager:
+    """Manages connections to Universe/UniData servers.
+
+    Provides connection lifecycle management, auto-reconnect capability,
+    file access, and transaction state tracking.
+
+    Args:
+        config: U2Config instance with connection parameters
+    """
+
+    def __init__(self, config: U2Config) -> None:
+        self._config = config
+        self._session: Any | None = None  # uopy.Session
+        self._connections: dict[str, ConnectionInfo] = {}
+        self._default_connection: str = "default"
+        self._transaction = TransactionState()
+        self._open_files: dict[str, Any] = {}  # Cache of open file handles
+
+    @property
+    def config(self) -> U2Config:
+        """Return the configuration object."""
+        return self._config
+
+    @property
+    def in_transaction(self) -> bool:
+        """Return whether a transaction is currently active."""
+        return self._transaction.in_transaction
+
+    def connect(self, name: str = "default") -> ConnectionInfo:
+        """Establish a connection to the Universe/UniData server.
+
+        Args:
+            name: Connection name for reference (supports multiple connections)
+
+        Returns:
+            ConnectionInfo with connection details
+
+        Raises:
+            ConnectionError: If connection fails
+        """
+        if name in self._connections and self._connections[name].is_active:
+            logger.info(f"Reusing existing connection '{name}'")
+            return self._connections[name]
+
+        try:
+            logger.info(f"Connecting to {self._config.host}/{self._config.account}")
+
+            self._session = uopy.connect(
+                host=self._config.host,
+                user=self._config.user,
+                password=self._config.password,
+                account=self._config.account,
+                service=self._config.service,
+            )
+
+            info = ConnectionInfo(
+                name=name,
+                host=self._config.host,
+                account=self._config.account,
+                service=self._config.service,
+                connected_at=datetime.now(),
+                is_active=True,
+            )
+            self._connections[name] = info
+
+            logger.info(f"Connected successfully to {self._config.account}")
+            return info
+
+        except uopy.UOError as e:
+            logger.error(f"Connection failed: {e}")
+            raise ConnectionError(f"Failed to connect to {self._config.host}: {e}") from e
+
+    def disconnect(self, name: str = "default") -> bool:
+        """Close a named connection.
+
+        Args:
+            name: Name of the connection to close
+
+        Returns:
+            True if connection was closed, False if not found
+        """
+        if name not in self._connections:
+            return False
+
+        try:
+            # Close any open files first
+            self._open_files.clear()
+
+            if self._session:
+                self._session.disconnect()
+                self._session = None
+
+            self._connections[name].is_active = False
+            del self._connections[name]
+
+            # Reset transaction state
+            self._transaction = TransactionState()
+
+            logger.info(f"Disconnected connection '{name}'")
+            return True
+
+        except uopy.UOError as e:
+            logger.warning(f"Error during disconnect: {e}")
+            return False
+
+    def disconnect_all(self) -> int:
+        """Close all connections.
+
+        Returns:
+            Count of closed connections
+        """
+        names = list(self._connections.keys())
+        count = 0
+        for name in names:
+            if self.disconnect(name):
+                count += 1
+        return count
+
+    def list_connections(self) -> dict[str, ConnectionInfo]:
+        """Return all active connections."""
+        return {k: v for k, v in self._connections.items() if v.is_active}
+
+    def get_session(self) -> Any:
+        """Get the active uopy session, auto-reconnecting if necessary.
+
+        Returns:
+            Active uopy.Session object
+
+        Raises:
+            ConnectionError: If reconnection fails
+        """
+        if self._session is None:
+            self.connect(self._default_connection)
+
+        # At this point session should be set
+        assert self._session is not None
+
+        # Verify connection is still alive with a simple command
+        try:
+            cmd = self._session.command()
+            cmd.exec("WHO")
+        except uopy.UOError:
+            logger.warning("Connection lost, attempting reconnect")
+            self._session = None
+            self._open_files.clear()
+            self.connect(self._default_connection)
+
+        return self._session
+
+    def open_file(self, file_name: str) -> Any:
+        """Open a Universe file.
+
+        File handles are cached for efficiency.
+
+        Args:
+            file_name: Name of the file to open
+
+        Returns:
+            uopy.File object
+
+        Raises:
+            FileNotFoundError: If file cannot be opened
+        """
+        # Return cached handle if available
+        if file_name in self._open_files:
+            return self._open_files[file_name]
+
+        session = self.get_session()
+        try:
+            file_handle = session.open(file_name)
+            self._open_files[file_name] = file_handle
+            return file_handle
+        except uopy.UOError as e:
+            raise FileNotFoundError(f"Cannot open file '{file_name}': {e}") from e
+
+    def close_file(self, file_name: str) -> bool:
+        """Close a cached file handle.
+
+        Args:
+            file_name: Name of the file to close
+
+        Returns:
+            True if file was closed, False if not found
+        """
+        if file_name in self._open_files:
+            del self._open_files[file_name]
+            return True
+        return False
+
+    def begin_transaction(self) -> bool:
+        """Begin a database transaction.
+
+        Returns:
+            True if transaction started successfully
+
+        Raises:
+            RuntimeError: If already in a transaction
+        """
+        if self._transaction.in_transaction:
+            raise RuntimeError("Transaction already in progress")
+
+        session = self.get_session()
+        try:
+            session.transaction_start()
+            self._transaction.in_transaction = True
+            self._transaction.started_at = datetime.now()
+            logger.info("Transaction started")
+            return True
+        except uopy.UOError as e:
+            logger.error(f"Failed to start transaction: {e}")
+            raise
+
+    def commit_transaction(self) -> bool:
+        """Commit the current transaction.
+
+        Returns:
+            True if committed successfully
+
+        Raises:
+            RuntimeError: If not in a transaction
+        """
+        if not self._transaction.in_transaction:
+            raise RuntimeError("No transaction in progress")
+
+        session = self.get_session()
+        try:
+            session.transaction_commit()
+            self._transaction = TransactionState()
+            logger.info("Transaction committed")
+            return True
+        except uopy.UOError as e:
+            logger.error(f"Failed to commit transaction: {e}")
+            raise
+
+    def rollback_transaction(self) -> bool:
+        """Rollback the current transaction.
+
+        Returns:
+            True if rolled back successfully
+
+        Raises:
+            RuntimeError: If not in a transaction
+        """
+        if not self._transaction.in_transaction:
+            raise RuntimeError("No transaction in progress")
+
+        session = self.get_session()
+        try:
+            session.transaction_rollback()
+            self._transaction = TransactionState()
+            logger.info("Transaction rolled back")
+            return True
+        except uopy.UOError as e:
+            logger.error(f"Failed to rollback transaction: {e}")
+            raise
