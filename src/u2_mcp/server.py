@@ -143,8 +143,8 @@ from .tools import (  # noqa: E402, F401
 )
 
 
-def run_http_server() -> None:
-    """Run the MCP server in HTTP/SSE mode for centralized deployment."""
+def run_sse_server() -> None:
+    """Run the MCP server in HTTP/SSE mode (legacy) for centralized deployment."""
     import uvicorn
     from starlette.middleware.cors import CORSMiddleware
 
@@ -174,6 +174,129 @@ def run_http_server() -> None:
     )
 
 
+def run_streamable_http_server() -> None:
+    """Run the MCP server in Streamable HTTP mode for Claude.ai Integrations.
+
+    This mode supports:
+    - Streamable HTTP transport (MCP 2025-06-18 spec)
+    - OAuth authentication with external IdP (Duo, Auth0, OIDC)
+    - Dynamic Client Registration (DCR) for Claude.ai
+    """
+    import uvicorn
+    from mcp.server.auth.settings import AuthSettings, ClientRegistrationOptions, RevocationOptions
+    from mcp.server.fastmcp import FastMCP as FastMCPAuth
+    from starlette.middleware.cors import CORSMiddleware
+    from starlette.routing import Route
+
+    from .auth.callback import handle_oauth_callback
+    from .auth.idp import create_idp_adapter
+    from .auth.provider import U2OAuthProvider
+
+    config = U2Config()
+
+    # Create OAuth provider if auth is enabled
+    auth_provider = None
+    auth_settings = None
+
+    if config.auth_enabled:
+        if not config.auth_issuer_url:
+            raise ValueError("U2_AUTH_ISSUER_URL is required when auth is enabled")
+        if not config.idp_discovery_url and not config.duo_api_host:
+            raise ValueError(
+                "U2_IDP_DISCOVERY_URL (or U2_DUO_API_HOST for Duo) is required when auth is enabled"
+            )
+
+        # Create external IdP adapter
+        idp_adapter = create_idp_adapter(config)
+
+        # Create OAuth provider
+        auth_provider = U2OAuthProvider(
+            idp_adapter=idp_adapter,
+            issuer_url=config.auth_issuer_url,
+            token_expiry=config.token_expiry_seconds,
+            refresh_token_expiry=config.refresh_token_expiry_seconds,
+        )
+
+        # Configure auth settings for FastMCP
+        auth_settings = AuthSettings(
+            issuer_url=config.auth_issuer_url,
+            resource_server_url=f"{config.auth_issuer_url}/mcp",
+            client_registration_options=ClientRegistrationOptions(
+                enabled=True,  # Required for Claude.ai DCR
+                valid_scopes=["u2:read", "u2:write"],
+                default_scopes=["u2:read"],
+            ),
+            revocation_options=RevocationOptions(enabled=True),
+            required_scopes=["u2:read"],
+        )
+
+        logger.info(f"OAuth enabled with {config.idp_provider} IdP")
+
+    # Create new FastMCP instance with auth configured
+    # Note: We need a new instance because the original 'mcp' was created without auth
+    mcp_streamable = FastMCPAuth(
+        name="U2 MCP Server",
+        auth_server_provider=auth_provider,
+        auth=auth_settings,
+        host=config.http_host,
+        port=config.http_port,
+        streamable_http_path="/mcp",
+    )
+
+    # Copy tools from the original mcp instance
+    # Tools are registered via decorators on the module-level 'mcp' instance
+    # We need to manually register them on the new instance
+    for tool in mcp._tool_manager._tools.values():
+        mcp_streamable._tool_manager.add_tool(tool)
+
+    # Copy resources
+    for resource in mcp._resource_manager._resources.values():
+        mcp_streamable._resource_manager.add_resource(resource)
+
+    # Copy prompts if any
+    for prompt in mcp._prompt_manager._prompts.values():
+        mcp_streamable._prompt_manager.add_prompt(prompt)
+
+    # Get the Streamable HTTP app
+    app = mcp_streamable.streamable_http_app()
+
+    # Add CORS middleware
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=config.http_cors_origins,
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
+
+    # Add custom OAuth callback route for external IdP
+    if auth_provider:
+        from starlette.requests import Request
+        from starlette.responses import Response
+
+        async def oauth_callback_handler(request: Request) -> Response:
+            return await handle_oauth_callback(request, auth_provider)
+
+        # Add route to the app's router
+        app.routes.append(Route("/oauth/callback", oauth_callback_handler, methods=["GET"]))
+
+    logger.info(
+        f"Starting U2 MCP Server (Streamable HTTP) on {config.http_host}:{config.http_port}"
+    )
+    logger.info(f"MCP endpoint: http://{config.http_host}:{config.http_port}/mcp")
+    if config.auth_enabled:
+        logger.info("OAuth endpoints: /authorize, /token, /register, /.well-known/*")
+        logger.info("OAuth callback: /oauth/callback")
+    logger.info(f"CORS origins: {config.http_cors_origins}")
+
+    uvicorn.run(
+        app,
+        host=config.http_host,
+        port=config.http_port,
+        log_level="info",
+    )
+
+
 def main() -> None:
     """Entry point for the MCP server."""
     parser = argparse.ArgumentParser(
@@ -182,7 +305,12 @@ def main() -> None:
     parser.add_argument(
         "--http",
         action="store_true",
-        help="Run as HTTP/SSE server for centralized deployment (default: stdio mode)",
+        help="Run as HTTP/SSE server (legacy mode)",
+    )
+    parser.add_argument(
+        "--streamable-http",
+        action="store_true",
+        help="Run as Streamable HTTP server for Claude.ai Integrations",
     )
     parser.add_argument(
         "--host",
@@ -209,8 +337,10 @@ def main() -> None:
 
         os.environ["U2_HTTP_PORT"] = str(args.port)
 
-    if args.http:
-        run_http_server()
+    if args.streamable_http:
+        run_streamable_http_server()
+    elif args.http:
+        run_sse_server()
     else:
         logger.info("Starting U2 MCP Server (stdio mode)")
         mcp.run()

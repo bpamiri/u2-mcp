@@ -102,6 +102,64 @@ class U2Config(BaseSettings):
         description="Comma-separated list of allowed CORS origins, or * for all",
     )
 
+    # OAuth/Authentication settings (for Claude.ai Integrations)
+    auth_enabled: bool = Field(
+        default=False,
+        alias="U2_AUTH_ENABLED",
+        description="Enable OAuth authentication for Streamable HTTP endpoint",
+    )
+    auth_issuer_url: str | None = Field(
+        default=None,
+        alias="U2_AUTH_ISSUER_URL",
+        description="OAuth issuer URL (this server's public URL, e.g., https://u2-mcp.example.com)",
+    )
+
+    # External Identity Provider settings
+    idp_provider: str = Field(
+        default="oidc",
+        alias="U2_IDP_PROVIDER",
+        description="Identity provider type: 'duo', 'auth0', or 'oidc'",
+    )
+    idp_discovery_url: str | None = Field(
+        default=None,
+        alias="U2_IDP_DISCOVERY_URL",
+        description="OIDC discovery URL (.well-known/openid-configuration)",
+    )
+    idp_client_id: str | None = Field(
+        default=None,
+        alias="U2_IDP_CLIENT_ID",
+        description="Client ID for external identity provider",
+    )
+    idp_client_secret: str | None = Field(
+        default=None,
+        alias="U2_IDP_CLIENT_SECRET",
+        description="Client secret for external identity provider",
+    )
+    idp_scopes: str = Field(
+        default="openid profile email",
+        alias="U2_IDP_SCOPES",
+        description="Scopes to request from external IdP (space-separated)",
+    )
+
+    # Duo-specific settings
+    duo_api_host: str | None = Field(
+        default=None,
+        alias="U2_DUO_API_HOST",
+        description="Duo API hostname (e.g., api-XXXXXXXX.duosecurity.com)",
+    )
+
+    # Token settings
+    token_expiry_seconds: int = Field(
+        default=3600,
+        alias="U2_TOKEN_EXPIRY_SECONDS",
+        description="Access token expiry time in seconds",
+    )
+    refresh_token_expiry_seconds: int = Field(
+        default=2592000,  # 30 days
+        alias="U2_REFRESH_TOKEN_EXPIRY_SECONDS",
+        description="Refresh token expiry time in seconds",
+    )
+
     @computed_field  # type: ignore[prop-decorator]  # pydantic pattern
     @property
     def blocked_commands(self) -> list[str]:
