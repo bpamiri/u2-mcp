@@ -125,18 +125,100 @@ Fixes #42
 
 ```
 u2-mcp/
-├── src/u2_mcp/          # Main package source
-│   ├── __init__.py
-│   ├── server.py        # MCP server implementation
-│   ├── connection.py    # Database connection handling
-│   ├── tools/           # MCP tool implementations
-│   └── utils/           # Utility functions
-├── tests/               # Test suite
-│   ├── unit/            # Unit tests
-│   └── integration/     # Integration tests
-├── docs/                # Documentation
-└── examples/            # Usage examples
+├── src/u2_mcp/           # Main package source
+│   ├── __init__.py       # Package init with version
+│   ├── server.py         # MCP server entry point
+│   ├── connection.py     # Database connection manager
+│   ├── config.py         # Pydantic settings configuration
+│   ├── tools/            # MCP tool implementations
+│   │   ├── files.py      # File operations (read, write, export)
+│   │   ├── query.py      # Query execution (RetrieVe, TCL)
+│   │   ├── dictionary.py # Schema discovery tools
+│   │   ├── subroutine.py # BASIC subroutine calls
+│   │   ├── transaction.py# Transaction management
+│   │   └── knowledge.py  # Knowledge persistence tools
+│   ├── resources/        # MCP resources
+│   │   ├── syntax_help.py    # RetrieVe syntax reference
+│   │   ├── examples.py       # Query examples
+│   │   └── knowledge.py      # Knowledge resource
+│   └── utils/            # Utility functions
+│       ├── safety.py     # Command validation
+│       ├── dynarray.py   # MultiValue data handling
+│       ├── export.py     # JSON/CSV export
+│       └── knowledge.py  # Knowledge storage
+├── tests/                # Test suite
+│   ├── conftest.py       # Pytest fixtures
+│   ├── mocks/            # Mock objects for testing
+│   └── test_*.py         # Unit tests
+├── docs/                 # Documentation
+│   ├── installation.md   # Installation guide
+│   ├── configuration.md  # Configuration reference
+│   ├── tools.md          # Tools reference
+│   └── examples.md       # Usage examples
+└── pyproject.toml        # Project configuration
 ```
+
+## Adding New Tools
+
+MCP tools are defined using the `@mcp.tool()` decorator. To add a new tool:
+
+1. **Choose the appropriate module** in `src/u2_mcp/tools/`
+2. **Define the tool function** with the decorator:
+
+```python
+from ..server import mcp, get_connection_manager
+
+@mcp.tool()
+def my_new_tool(param1: str, param2: int = 10) -> dict[str, Any]:
+    """Short description of what the tool does.
+
+    Longer description with more details about the tool's behavior.
+
+    Args:
+        param1: Description of parameter 1
+        param2: Description of parameter 2 (default: 10)
+
+    Returns:
+        Dictionary containing the result fields.
+    """
+    manager = get_connection_manager()
+
+    try:
+        # Tool implementation
+        result = ...
+        return {"status": "success", "data": result}
+    except Exception as e:
+        return {"error": str(e)}
+```
+
+3. **Follow these conventions:**
+   - Return dictionaries (JSON-serializable)
+   - Include `status` or `error` in responses
+   - Use type hints for all parameters
+   - Write comprehensive docstrings (shown to AI assistants)
+   - Handle errors gracefully
+
+4. **Add tests** in `tests/test_<module>.py`
+
+5. **Update documentation** in `docs/tools.md`
+
+## Adding New Resources
+
+MCP resources provide context to AI assistants. To add a new resource:
+
+```python
+from ..server import mcp
+
+@mcp.resource("u2://my-resource")
+def get_my_resource() -> str:
+    """Return helpful information as a string."""
+    return "Resource content here..."
+```
+
+Resources should:
+- Use the `u2://` URI scheme
+- Return string content (markdown supported)
+- Provide helpful context for AI interactions
 
 ## Testing Guidelines
 

@@ -4,9 +4,38 @@
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 [![Python](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
 
-A Model Context Protocol (MCP) server that enables AI assistants to interact with Rocket Universe and UniData MultiValue databases using natural language.
+**Connect Claude to your Universe/UniData database using natural language.**
+
+u2-mcp is an MCP server that lets AI assistants like Claude query and interact with Rocket Universe and UniData MultiValue databases. Ask questions in plain English and get real answers from your data.
 
 **The first MCP server for the Pick/MultiValue database family.**
+
+## What Can You Do With This?
+
+Instead of writing RetrieVe queries, just ask Claude:
+
+| You Ask | Claude Does |
+|---------|-------------|
+| "How many customers are in California?" | Queries the database and tells you "1,247 customers" |
+| "Show me order ORD001" | Reads the record and displays all fields |
+| "What files are available?" | Lists all files in your account |
+| "Describe the CUSTOMERS file" | Shows field definitions from the dictionary |
+
+## How It Works
+
+```
+┌─────────────────┐     ┌─────────────────┐     ┌─────────────────┐
+│  Claude Desktop │◄───►│     u2-mcp      │◄───►│ Universe/UniData│
+│  (You ask here) │     │  (Translates)   │     │   (Your data)   │
+└─────────────────┘     └─────────────────┘     └─────────────────┘
+```
+
+1. You ask Claude a question about your database
+2. Claude calls u2-mcp with the appropriate tool
+3. u2-mcp queries your Universe/UniData server
+4. Results come back through Claude in a readable format
+
+**New to MCP?** See [What is MCP?](docs/what-is-mcp.md) for a complete explanation.
 
 ## Features
 
@@ -255,10 +284,15 @@ We welcome contributions! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for guid
 
 ## Documentation
 
-- [Installation Guide](docs/installation.md)
-- [Configuration Reference](docs/configuration.md)
-- [Tool Reference](docs/tools.md)
-- [Examples](docs/examples.md)
+### Getting Started
+- [Quickstart Guide](docs/quickstart.md) - Get running in 10 minutes
+- [What is MCP?](docs/what-is-mcp.md) - Understanding MCP and how u2-mcp works
+- [Installation Guide](docs/installation.md) - Detailed installation instructions
+
+### Reference
+- [Configuration Reference](docs/configuration.md) - All environment variables
+- [Tools Reference](docs/tools.md) - Complete tool documentation
+- [Usage Examples](docs/examples.md) - Common usage patterns
 
 ## License
 
