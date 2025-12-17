@@ -132,10 +132,11 @@ def list_connections() -> dict[str, Any]:
 # =============================================================================
 
 # These imports register the tools and resources with the mcp instance
-from .resources import examples, syntax_help  # noqa: E402, F401
-from .tools import (  # noqa: E402, F401  # noqa: E402, F401
+from .resources import examples, knowledge, syntax_help  # noqa: E402, F401
+from .tools import (  # noqa: E402, F401
     dictionary,
     files,
+    knowledge as knowledge_tools,
     query,
     subroutine,
     transaction,

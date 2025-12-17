@@ -1,3 +1,3 @@
-"""MCP resources for AI context (syntax help, query examples)."""
+"""MCP resources for AI context (syntax help, query examples, knowledge)."""
 
-from . import examples, syntax_help  # noqa: F401
+from . import examples, knowledge, syntax_help  # noqa: F401
