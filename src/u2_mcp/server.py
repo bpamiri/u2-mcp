@@ -31,7 +31,7 @@ def get_connection_manager() -> ConnectionManager:
     """
     global _connection_manager
     if _connection_manager is None:
-        config = U2Config()  # type: ignore[call-arg]  # pydantic-settings loads from env
+        config = U2Config()
         _connection_manager = ConnectionManager(config)
     return _connection_manager
 
@@ -148,7 +148,7 @@ def run_http_server() -> None:
     import uvicorn
     from starlette.middleware.cors import CORSMiddleware
 
-    config = U2Config()  # type: ignore[call-arg]
+    config = U2Config()
 
     # Get the SSE app from FastMCP
     app = mcp.sse_app()

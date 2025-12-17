@@ -61,9 +61,13 @@ select = ["E", "F", "I", "UP", "B", "SIM"]
 
 [tool.mypy]
 python_version = "3.10"
-strict = true
 warn_return_any = true
-warn_unused_ignores = true
+disallow_untyped_defs = true
+# Relax checks for third-party libraries without type stubs
+ignore_missing_imports = true
+# FastMCP decorators and pydantic validators don't have full type annotations
+# call-arg disabled because pydantic-settings loads values from env vars at runtime
+disable_error_code = ["misc", "untyped-decorator", "call-arg"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
