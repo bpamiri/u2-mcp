@@ -1,5 +1,6 @@
 """Main MCP server entry point for u2-mcp."""
 
+import argparse
 import logging
 from typing import Any
 
@@ -143,10 +144,75 @@ from .tools import (  # noqa: E402, F401
 )
 
 
+def run_http_server() -> None:
+    """Run the MCP server in HTTP/SSE mode for centralized deployment."""
+    import uvicorn
+    from starlette.middleware.cors import CORSMiddleware
+
+    config = U2Config()  # type: ignore[call-arg]
+
+    # Get the SSE app from FastMCP
+    app = mcp.sse_app()
+
+    # Add CORS middleware for browser clients
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=config.http_cors_origins,
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
+
+    logger.info(f"Starting U2 MCP Server (HTTP/SSE) on {config.http_host}:{config.http_port}")
+    logger.info(f"SSE endpoint: http://{config.http_host}:{config.http_port}/sse")
+    logger.info(f"CORS origins: {config.http_cors_origins}")
+
+    uvicorn.run(
+        app,
+        host=config.http_host,
+        port=config.http_port,
+        log_level="info",
+    )
+
+
 def main() -> None:
     """Entry point for the MCP server."""
-    logger.info("Starting U2 MCP Server")
-    mcp.run()
+    parser = argparse.ArgumentParser(
+        description="U2 MCP Server - Connect AI assistants to Universe/UniData databases"
+    )
+    parser.add_argument(
+        "--http",
+        action="store_true",
+        help="Run as HTTP/SSE server for centralized deployment (default: stdio mode)",
+    )
+    parser.add_argument(
+        "--host",
+        type=str,
+        default=None,
+        help="HTTP server host (overrides U2_HTTP_HOST env var)",
+    )
+    parser.add_argument(
+        "--port",
+        type=int,
+        default=None,
+        help="HTTP server port (overrides U2_HTTP_PORT env var)",
+    )
+
+    args = parser.parse_args()
+
+    # Override config with CLI args if provided
+    if args.host:
+        import os
+        os.environ["U2_HTTP_HOST"] = args.host
+    if args.port:
+        import os
+        os.environ["U2_HTTP_PORT"] = str(args.port)
+
+    if args.http:
+        run_http_server()
+    else:
+        logger.info("Starting U2 MCP Server (stdio mode)")
+        mcp.run()
 
 
 if __name__ == "__main__":

@@ -86,11 +86,37 @@ class U2Config(BaseSettings):
         description="Comma-separated list of blocked TCL commands",
     )
 
+    # HTTP Server settings (for centralized deployment)
+    http_host: str = Field(
+        default="0.0.0.0",
+        alias="U2_HTTP_HOST",
+        description="Host to bind HTTP server to",
+    )
+    http_port: int = Field(
+        default=8080,
+        alias="U2_HTTP_PORT",
+        description="Port for HTTP server",
+    )
+    http_cors_origins_str: str = Field(
+        default="*",
+        alias="U2_HTTP_CORS_ORIGINS",
+        description="Comma-separated list of allowed CORS origins, or * for all",
+    )
+
     @computed_field  # type: ignore[prop-decorator]  # pydantic pattern
     @property
     def blocked_commands(self) -> list[str]:
         """Parse comma-separated string into list of commands."""
         return [cmd.strip().upper() for cmd in self.blocked_commands_str.split(",") if cmd.strip()]
+
+    @computed_field  # type: ignore[prop-decorator]  # pydantic pattern
+    @property
+    def http_cors_origins(self) -> list[str]:
+        """Parse comma-separated CORS origins into list."""
+        origins = self.http_cors_origins_str.strip()
+        if origins == "*":
+            return ["*"]
+        return [o.strip() for o in origins.split(",") if o.strip()]
 
     @field_validator("service")
     @classmethod

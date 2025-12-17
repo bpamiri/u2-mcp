@@ -27,6 +27,7 @@ dependencies = [
     "mcp>=1.0.0",
     "uopy>=1.0.0",
     "pydantic-settings>=2.0.0",
+    "uvicorn>=0.30.0",
 ]
 
 [project.optional-dependencies]

@@ -172,6 +172,74 @@ Claude: I found that AR-CUST is the customer master file. Let me save this for f
 
 In the next conversation, Claude will already know this and won't need to rediscover it.
 
+## Centralized Deployment (HTTP/SSE Mode)
+
+For team environments, you can run u2-mcp as a centralized HTTP server instead of local stdio mode. This allows:
+
+- Single database connection for the whole team
+- Shared knowledge base
+- Centralized credential management
+- Access from any MCP-compatible client
+
+### Running the HTTP Server
+
+```bash
+# Basic HTTP server on default port 8080
+u2-mcp --http
+
+# Custom host and port
+u2-mcp --http --host 0.0.0.0 --port 3000
+
+# Or using environment variables
+export U2_HTTP_HOST=0.0.0.0
+export U2_HTTP_PORT=3000
+u2-mcp --http
+```
+
+### Docker Deployment
+
+```dockerfile
+FROM python:3.12-slim
+
+RUN pip install u2-mcp
+
+ENV U2_HOST=your-universe-server
+ENV U2_USER=username
+ENV U2_PASSWORD=password
+ENV U2_ACCOUNT=MYACCOUNT
+ENV U2_HTTP_PORT=8080
+
+EXPOSE 8080
+
+CMD ["u2-mcp", "--http"]
+```
+
+```bash
+docker build -t u2-mcp-server .
+docker run -p 8080:8080 u2-mcp-server
+```
+
+### HTTP Configuration Options
+
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `U2_HTTP_HOST` | Host to bind HTTP server to | `0.0.0.0` |
+| `U2_HTTP_PORT` | Port for HTTP server | `8080` |
+| `U2_HTTP_CORS_ORIGINS` | Allowed CORS origins (comma-separated or `*`) | `*` |
+
+### Connecting Clients
+
+The HTTP server exposes an SSE (Server-Sent Events) endpoint at `/sse`. MCP clients that support remote servers can connect to:
+
+```
+http://your-server:8080/sse
+```
+
+**Note:** As of late 2024, Claude Desktop only supports local stdio MCP servers. HTTP/SSE mode is for:
+- Custom MCP clients
+- Future Claude Desktop versions with remote server support
+- Integration with other AI tools that support MCP over HTTP
+
 ## Security
 
 - Credentials are never logged
