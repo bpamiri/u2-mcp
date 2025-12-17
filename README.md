@@ -3,6 +3,9 @@
 [![PyPI version](https://img.shields.io/pypi/v/u2-mcp.svg)](https://pypi.org/project/u2-mcp/)
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 [![Python](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
+[![MCP](https://img.shields.io/badge/MCP-Registry-green.svg)](https://registry.modelcontextprotocol.io)
+
+<!-- mcp-name: io.github.bpamiri/u2-mcp -->
 
 **Connect Claude to your Universe/UniData database using natural language.**
 

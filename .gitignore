@@ -166,3 +166,6 @@ credentials.json
 *.pem
 *.key
 .env.production
+
+# MCP Publisher tokens
+.mcpregistry_*
