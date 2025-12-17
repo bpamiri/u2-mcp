@@ -109,6 +109,13 @@ Once connected, you can use natural language to interact with your Universe data
 - `call_subroutine` - Call BASIC subroutines
 - `begin_transaction` / `commit_transaction` / `rollback_transaction` - Transaction management
 
+### Knowledge Persistence
+- `save_knowledge` - Save learned information about the database
+- `list_knowledge` - List all saved knowledge topics
+- `get_knowledge_topic` - Retrieve specific topic
+- `search_knowledge` - Search across saved knowledge
+- `delete_knowledge` - Remove a knowledge topic
+
 ## Configuration Options
 
 | Variable | Description | Default |
@@ -124,6 +131,46 @@ Once connected, you can use natural language to interact with your Universe data
 | `U2_READ_ONLY` | Disable write operations | `false` |
 | `U2_MAX_RECORDS` | Maximum SELECT results | `10000` |
 | `U2_BLOCKED_COMMANDS` | Comma-separated blocked TCL commands | `DELETE.FILE,CLEAR.FILE` |
+| `U2_KNOWLEDGE_PATH` | Custom path for knowledge file | `~/.u2-mcp/knowledge.md` |
+
+## Knowledge Persistence
+
+The MCP server includes a knowledge persistence feature that allows Claude to save and recall learned information about your database across sessions. This eliminates repetitive discovery work and speeds up future interactions.
+
+### How It Works
+
+When Claude discovers useful information about your database (file purposes, field meanings, working queries), it can save this knowledge using the `save_knowledge` tool. This information is stored in a markdown file and automatically available in future conversations via the `u2://knowledge` resource.
+
+### What Gets Saved
+
+- **File descriptions** - What each file contains (e.g., "AR-CUST is the customer master file")
+- **Field mappings** - Which fields contain what data (e.g., "Field 1 is customer name")
+- **Query patterns** - Queries that produced good results
+- **Data formats** - Date formats, code meanings, conversion notes
+- **Relationships** - How files relate to each other
+
+### Storage Location
+
+Knowledge is stored in `~/.u2-mcp/knowledge.md` by default. You can customize this location using the `U2_KNOWLEDGE_PATH` environment variable:
+
+```json
+{
+  "env": {
+    "U2_KNOWLEDGE_PATH": "/path/to/custom/knowledge.md"
+  }
+}
+```
+
+### Example Usage
+
+After Claude discovers that `AR-CUST` contains customer records:
+
+```
+Claude: I found that AR-CUST is the customer master file. Let me save this for future reference.
+[Calls save_knowledge("AR-CUST file", "Customer master file. Key is customer number. Field 1=name, Field 2=address...")]
+```
+
+In the next conversation, Claude will already know this and won't need to rediscover it.
 
 ## Security
 
