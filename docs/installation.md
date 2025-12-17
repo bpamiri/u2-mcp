@@ -55,7 +55,7 @@ This runs u2-mcp in an isolated environment without permanent installation.
 ### Method 3: From Source
 
 ```bash
-git clone https://github.com/yourusername/u2-mcp.git
+git clone https://github.com/bpamiri/u2-mcp.git
 cd u2-mcp
 pip install -e .
 ```

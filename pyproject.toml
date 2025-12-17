@@ -44,10 +44,10 @@ dev = [
 u2-mcp = "u2_mcp.server:main"
 
 [project.urls]
-Homepage = "https://github.com/yourusername/u2-mcp"
-Documentation = "https://github.com/yourusername/u2-mcp#readme"
-Repository = "https://github.com/yourusername/u2-mcp"
-Issues = "https://github.com/yourusername/u2-mcp/issues"
+Homepage = "https://github.com/bpamiri/u2-mcp"
+Documentation = "https://github.com/bpamiri/u2-mcp#readme"
+Repository = "https://github.com/bpamiri/u2-mcp"
+Issues = "https://github.com/bpamiri/u2-mcp/issues"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/u2_mcp"]
