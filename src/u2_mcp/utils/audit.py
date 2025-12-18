@@ -201,7 +201,7 @@ class AuditLogger:
             Sanitized parameters with sensitive values masked
         """
         sensitive_keys = {"password", "secret", "token", "key", "credential"}
-        sanitized = {}
+        sanitized: dict[str, Any] = {}
 
         for key, value in params.items():
             key_lower = key.lower()
