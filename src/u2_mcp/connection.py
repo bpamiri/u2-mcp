@@ -241,20 +241,50 @@ class ConnectionManager:
             return True
         return False
 
-    def execute_command(self, command_text: str) -> str:
+    def execute_command(self, command_text: str, timeout: int | None = None) -> str:
         """Execute a TCL command and return the response.
 
         Args:
             command_text: TCL command to execute
+            timeout: Optional timeout in seconds (defaults to config.query_timeout)
 
         Returns:
             Command response string (sanitized for display)
+
+        Raises:
+            TimeoutError: If command exceeds timeout
         """
+        import threading
+
+        effective_timeout = timeout if timeout is not None else self._config.query_timeout
         session = self.get_session()
-        cmd = uopy.Command(command_text, session=session)
-        cmd.run()
-        response = str(cmd.response) if cmd.response else ""
-        return self._sanitize_output(response)
+
+        result: dict[str, Any] = {"response": None, "error": None}
+        completed = threading.Event()
+
+        def run_command() -> None:
+            try:
+                cmd = uopy.Command(command_text, session=session)
+                cmd.run()
+                result["response"] = str(cmd.response) if cmd.response else ""
+            except Exception as e:
+                result["error"] = e
+            finally:
+                completed.set()
+
+        thread = threading.Thread(target=run_command, daemon=True)
+        thread.start()
+
+        if completed.wait(timeout=effective_timeout):
+            if result["error"]:
+                raise result["error"]
+            return self._sanitize_output(result["response"] or "")
+        else:
+            logger.error(f"Query timed out after {effective_timeout}s: {command_text[:100]}")
+            raise TimeoutError(
+                f"Query exceeded {effective_timeout} second timeout. "
+                "Consider adding SAMPLE clause or narrowing the selection criteria."
+            )
 
     def _sanitize_output(self, text: str) -> str:
         """Clean up Universe output for display.

@@ -78,6 +78,11 @@ class U2Config(BaseSettings):
         alias="U2_MAX_RECORDS",
         description="Maximum SELECT results",
     )
+    query_timeout: int = Field(
+        default=60,
+        alias="U2_QUERY_TIMEOUT",
+        description="Maximum seconds for a query to execute before timeout",
+    )
     # Store as string to avoid pydantic-settings JSON parsing issues
     blocked_commands_str: str = Field(
         default="DELETE.FILE,CLEAR.FILE,CNAME,CREATE.FILE",
