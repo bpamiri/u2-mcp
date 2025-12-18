@@ -9,10 +9,10 @@ from __future__ import annotations
 import asyncio
 import logging
 import threading
-import time
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import TYPE_CHECKING, Callable, Optional
+from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from ..config import U2Config
@@ -51,7 +51,7 @@ class ConnectionWatchdog:
 
     def __init__(
         self,
-        config: "U2Config",
+        config: U2Config,
         health_check_fn: Callable[[], bool],
         force_disconnect_fn: Callable[[], None],
     ) -> None:
@@ -230,7 +230,9 @@ class ConnectionWatchdog:
             "timeout_seconds": self._config.watchdog_timeout,
             "max_failures": self._config.watchdog_max_failures,
             "stats": {
-                "started_at": self._stats.started_at.isoformat() if self._stats.started_at else None,
+                "started_at": (
+                    self._stats.started_at.isoformat() if self._stats.started_at else None
+                ),
                 "checks_total": self._stats.checks_total,
                 "checks_passed": self._stats.checks_passed,
                 "checks_failed": self._stats.checks_failed,
@@ -266,7 +268,7 @@ def get_watchdog() -> ConnectionWatchdog | None:
 
 
 def init_watchdog(
-    config: "U2Config",
+    config: U2Config,
     health_check_fn: Callable[[], bool],
     force_disconnect_fn: Callable[[], None],
 ) -> ConnectionWatchdog:

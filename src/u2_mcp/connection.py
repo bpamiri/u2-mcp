@@ -322,13 +322,13 @@ class ConnectionManager:
 
         Used by the watchdog to reset a hung connection.
         """
+        import contextlib
+
         logger.warning("Force disconnecting database connection")
         try:
             if self._session:
-                try:
+                with contextlib.suppress(Exception):
                     self._session.close()
-                except Exception:
-                    pass  # Ignore errors during force close
                 self._session = None
 
             # Clear all cached state
