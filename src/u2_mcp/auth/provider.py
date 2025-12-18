@@ -126,7 +126,9 @@ class U2OAuthProvider(
             grant_types=list(client_info.grant_types),
             response_types=list(client_info.response_types),
             scope=client_info.scope,
-            token_endpoint_auth_method=client_info.token_endpoint_auth_method or "client_secret_post",
+            token_endpoint_auth_method=(
+                client_info.token_endpoint_auth_method or "client_secret_post"
+            ),
         )
 
         self.storage.store_client(stored)
