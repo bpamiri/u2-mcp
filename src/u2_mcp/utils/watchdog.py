@@ -101,9 +101,7 @@ class ConnectionWatchdog:
             return result
         else:
             # Timeout - the thread may still be running but we don't wait
-            logger.warning(
-                f"Health check timed out after {self._config.watchdog_timeout}s"
-            )
+            logger.warning(f"Health check timed out after {self._config.watchdog_timeout}s")
             return (False, f"Timeout after {self._config.watchdog_timeout}s")
 
     async def _run_check(self) -> bool:
@@ -117,9 +115,7 @@ class ConnectionWatchdog:
 
         # Run the synchronous health check in a thread pool
         loop = asyncio.get_event_loop()
-        success, error = await loop.run_in_executor(
-            None, self._perform_health_check_sync
-        )
+        success, error = await loop.run_in_executor(None, self._perform_health_check_sync)
 
         if success:
             self._stats.checks_passed += 1
@@ -141,8 +137,7 @@ class ConnectionWatchdog:
     def _force_reconnect(self) -> None:
         """Force a reconnection by disconnecting the current connection."""
         logger.warning(
-            f"Forcing reconnect after {self._stats.consecutive_failures} "
-            f"consecutive failures"
+            f"Forcing reconnect after {self._stats.consecutive_failures} consecutive failures"
         )
         try:
             self._force_disconnect_fn()
@@ -239,19 +234,13 @@ class ConnectionWatchdog:
                 "reconnects_forced": self._stats.reconnects_forced,
                 "consecutive_failures": self._stats.consecutive_failures,
                 "last_check_at": (
-                    self._stats.last_check_at.isoformat()
-                    if self._stats.last_check_at
-                    else None
+                    self._stats.last_check_at.isoformat() if self._stats.last_check_at else None
                 ),
                 "last_success_at": (
-                    self._stats.last_success_at.isoformat()
-                    if self._stats.last_success_at
-                    else None
+                    self._stats.last_success_at.isoformat() if self._stats.last_success_at else None
                 ),
                 "last_failure_at": (
-                    self._stats.last_failure_at.isoformat()
-                    if self._stats.last_failure_at
-                    else None
+                    self._stats.last_failure_at.isoformat() if self._stats.last_failure_at else None
                 ),
                 "last_failure_reason": self._stats.last_failure_reason,
             },
