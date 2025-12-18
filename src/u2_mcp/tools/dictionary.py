@@ -94,28 +94,39 @@ def list_dictionary(file_name: str, include_system: bool = False) -> dict[str, A
     try:
         dict_file_name = f"DICT {file_name}"
 
-        # Get list of dictionary item names via SELECT command
-        if include_system:
-            manager.execute_command(f"SELECT {dict_file_name}")
-        else:
-            manager.execute_command(f'SELECT {dict_file_name} WITH @ID NOT LIKE "@..."')
+        # Use LIST to get dictionary item IDs - more reliable than SELECT
+        list_output = manager.execute_command(f"LIST {dict_file_name} @ID SAMPLE 1000")
 
-        select = manager.create_select_list()
+        # Parse the output to extract item IDs
+        item_ids: list[str] = []
+        for line in list_output.split("\n"):
+            line = line.strip()
+            # Skip empty lines, headers, and summary lines
+            if not line or line.startswith("LIST") or "listed" in line.lower():
+                continue
+            if line.startswith("-") or line.startswith("=") or line.startswith("*"):
+                continue
+            # Extract the first word as the item ID
+            parts = line.split()
+            if parts:
+                item_id = parts[0]
+                # Skip system items unless requested
+                if not include_system and item_id.startswith("@"):
+                    continue
+                item_ids.append(item_id)
+
         items: list[dict[str, Any]] = []
         dict_file = manager.open_file(dict_file_name)
 
-        while True:
-            item_id = select.next()
-            if item_id is None or str(item_id) == "":
-                break
+        for item_id in item_ids:
             try:
-                raw = dict_file.read(str(item_id))
+                raw = dict_file.read(item_id)
                 if raw:
                     parsed = parse_record(str(raw))
-                    item = _parse_dict_item(str(item_id), parsed)
+                    item = _parse_dict_item(item_id, parsed)
                     items.append(item)
             except Exception as e:
-                items.append({"name": str(item_id), "type": "error", "error": str(e)})
+                items.append({"name": item_id, "type": "error", "error": str(e)})
 
         # Sort by type, then by field number for D-types
         def sort_key(item: dict[str, Any]) -> tuple[int, int, str]:
@@ -204,23 +215,34 @@ def describe_file(file_name: str) -> dict[str, Any]:
         dict_file_name = f"DICT {file_name}"
         dict_file = manager.open_file(dict_file_name)
 
-        manager.execute_command(f'SELECT {dict_file_name} WITH @ID NOT LIKE "@..."')
-        select = manager.create_select_list()
+        # Use LIST to get dictionary item IDs - more reliable than SELECT
+        list_output = manager.execute_command(f"LIST {dict_file_name} @ID SAMPLE 1000")
+
+        # Parse the output to extract item IDs
+        item_ids: list[str] = []
+        for line in list_output.split("\n"):
+            line = line.strip()
+            if not line or line.startswith("LIST") or "listed" in line.lower():
+                continue
+            if line.startswith("-") or line.startswith("=") or line.startswith("*"):
+                continue
+            parts = line.split()
+            if parts:
+                item_id = parts[0]
+                if not item_id.startswith("@"):
+                    item_ids.append(item_id)
 
         fields: list[dict[str, Any]] = []
-        while True:
-            item_id = select.next()
-            if item_id is None or str(item_id) == "":
-                break
+        for item_id in item_ids:
             try:
-                raw = dict_file.read(str(item_id))
+                raw = dict_file.read(item_id)
                 if raw:
                     parsed = parse_record(str(raw))
                     item_type = str(parsed.get("1", "")).upper()
 
                     # Only include data-defining items
                     if item_type in ("D", "I", "A"):
-                        item = _parse_dict_item(str(item_id), parsed)
+                        item = _parse_dict_item(item_id, parsed)
                         fields.append(item)
             except Exception:
                 pass
