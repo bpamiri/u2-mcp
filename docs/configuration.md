@@ -38,7 +38,13 @@ These must be set for the server to connect:
 
 ## Audit Logging
 
-Enable audit logging to capture all MCP tool calls for analysis and debugging.
+Enable audit logging to capture all MCP tool calls for analysis and debugging. This is useful for:
+- Analyzing Claude.ai session patterns and queries
+- Identifying bugs or improvement opportunities
+- Understanding database usage patterns
+- Debugging integration issues
+
+### Configuration
 
 | Variable | Description | Default |
 |----------|-------------|---------|
@@ -47,15 +53,91 @@ Enable audit logging to capture all MCP tool calls for analysis and debugging.
 | `U2_AUDIT_INCLUDE_RESULTS` | Include tool results in logs | `true` |
 | `U2_AUDIT_MAX_RESULT_SIZE` | Max characters for results (truncates if larger) | `10000` |
 
-Audit logs are written as JSONL (JSON Lines) files, one per day (`audit-YYYY-MM-DD.jsonl`). Each line contains:
-- `event`: Type of event (session_start, tool_call, session_end, error)
-- `timestamp`: ISO format timestamp
-- `session_id`: Session identifier
-- `tool`: Tool name (for tool_call events)
-- `parameters`: Tool parameters (sensitive values redacted)
-- `result`: Tool result (if include_results is enabled)
-- `duration_ms`: Execution time in milliseconds
-- `status`: success or error
+### Log Format
+
+Audit logs are written as JSONL (JSON Lines) files, one per day (`audit-YYYY-MM-DD.jsonl`). Each line is a JSON object with the following fields:
+
+| Field | Description |
+|-------|-------------|
+| `event` | Event type: `session_start`, `tool_call`, `session_end`, `error` |
+| `timestamp` | ISO 8601 format timestamp |
+| `session_id` | Unique session identifier |
+| `tool` | Tool name (for `tool_call` events) |
+| `parameters` | Tool parameters (sensitive values redacted) |
+| `result` | Tool result (if `include_results` is enabled) |
+| `duration_ms` | Execution time in milliseconds |
+| `status` | `success` or `error` |
+| `error` | Error message (if status is `error`) |
+
+### Example Log Entries
+
+**Session Start:**
+```json
+{"event": "session_start", "session_id": "20251217-224748-670325", "timestamp": "2025-12-17T22:47:48.670325"}
+```
+
+**Tool Call:**
+```json
+{"event": "tool_call", "timestamp": "2025-12-17T22:48:15.123456", "session_id": "20251217-224748-670325", "tool": "execute_query", "parameters": {"query": "LIST CUSTOMERS SAMPLE 10"}, "duration_ms": 45.23, "status": "success", "result": {"query": "LIST CUSTOMERS SAMPLE 10", "output": "...", "status": "success"}}
+```
+
+**Error:**
+```json
+{"event": "tool_call", "timestamp": "2025-12-17T22:49:00.000000", "session_id": "20251217-224748-670325", "tool": "read_record", "parameters": {"file_name": "CUSTOMERS", "record_id": "INVALID"}, "duration_ms": 12.5, "status": "error", "error": "Record not found"}
+```
+
+### Security
+
+- Sensitive parameters (containing `password`, `secret`, `token`, `key`, `credential`) are automatically redacted
+- Large results are truncated to `U2_AUDIT_MAX_RESULT_SIZE` to prevent huge log files
+- Log files are owned by the u2mcp service user
+
+### Setup
+
+1. Create the audit directory:
+   ```bash
+   mkdir -p /var/log/u2-mcp/audit
+   chown -R u2mcp:u2mcp /var/log/u2-mcp
+   ```
+
+2. If using systemd with `ProtectSystem=strict`, add the audit path to `ReadWritePaths`:
+   ```ini
+   ReadWritePaths=/var/log/u2-mcp/audit
+   ```
+
+3. Add to your `.env`:
+   ```bash
+   U2_AUDIT_ENABLED=true
+   U2_AUDIT_PATH=/var/log/u2-mcp/audit
+   ```
+
+4. Restart the service:
+   ```bash
+   systemctl restart u2-mcp
+   ```
+
+### Analyzing Logs
+
+Logs can be analyzed using standard tools:
+
+```bash
+# View today's log
+cat /var/log/u2-mcp/audit/audit-$(date +%Y-%m-%d).jsonl
+
+# Count tool calls by type
+cat audit-*.jsonl | jq -r 'select(.event=="tool_call") | .tool' | sort | uniq -c | sort -rn
+
+# Find slow queries (>1 second)
+cat audit-*.jsonl | jq 'select(.event=="tool_call" and .duration_ms > 1000)'
+
+# Find errors
+cat audit-*.jsonl | jq 'select(.status=="error")'
+
+# Export to CSV for analysis
+cat audit-*.jsonl | jq -r 'select(.event=="tool_call") | [.timestamp, .tool, .duration_ms, .status] | @csv'
+```
+
+You can also feed the logs to Claude Code for analysis to identify patterns, bugs, or improvement opportunities in the u2-mcp codebase
 
 ## HTTP Server Settings
 
