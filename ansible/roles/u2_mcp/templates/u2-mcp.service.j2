@@ -1,0 +1,39 @@
+[Unit]
+Description=U2 MCP Server for Universe/UniData databases
+Documentation=https://github.com/bpamiri/u2-mcp
+After=network.target
+
+[Service]
+Type=simple
+User={{ u2_mcp_user }}
+Group={{ u2_mcp_group }}
+WorkingDirectory={{ u2_mcp_home }}
+EnvironmentFile={{ u2_mcp_config_dir }}/.env
+
+# Run the MCP server
+{% if u2_mcp_transport == 'stdio' %}
+ExecStart={{ u2_mcp_venv }}/bin/u2-mcp
+{% elif u2_mcp_transport == 'sse' %}
+ExecStart={{ u2_mcp_venv }}/bin/u2-mcp --transport sse --host {{ u2_mcp_http_host }} --port {{ u2_mcp_http_port }}
+{% else %}
+ExecStart={{ u2_mcp_venv }}/bin/u2-mcp --transport streamable-http --host {{ u2_mcp_http_host }} --port {{ u2_mcp_http_port }}
+{% endif %}
+
+# Restart on failure
+Restart=on-failure
+RestartSec=5
+
+# Security hardening
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths={{ u2_mcp_home }}
+
+# Logging
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier={{ u2_mcp_service_name }}
+
+[Install]
+WantedBy=multi-user.target

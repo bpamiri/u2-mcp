@@ -6,15 +6,20 @@ Supports:
 - Auth0
 """
 
+from typing import TYPE_CHECKING
+
 from .auth0 import Auth0Adapter
 from .base import BaseIdPAdapter
 from .duo import DuoOIDCAdapter
 from .oidc import GenericOIDCAdapter
 
+if TYPE_CHECKING:
+    from u2_mcp.config import U2Config
+
 __all__ = ["BaseIdPAdapter", "GenericOIDCAdapter", "DuoOIDCAdapter", "Auth0Adapter"]
 
 
-def create_idp_adapter(config: "U2Config") -> BaseIdPAdapter:  # noqa: F821
+def create_idp_adapter(config: "U2Config") -> BaseIdPAdapter:
     """Factory function to create the appropriate IdP adapter based on config.
 
     Args:

@@ -1,0 +1,37 @@
+---
+# Default variables for u2_mcp role
+
+# Installation settings
+u2_mcp_version: "latest"  # or specify version like "0.2.0"
+u2_mcp_user: "u2mcp"
+u2_mcp_group: "u2mcp"
+u2_mcp_home: "/opt/u2-mcp"
+u2_mcp_config_dir: "/etc/u2-mcp"
+u2_mcp_venv: "{{ u2_mcp_home }}/venv"
+
+# Python settings
+python_version: "python3"
+
+# Service settings
+u2_mcp_service_name: "u2-mcp"
+u2_mcp_transport: "stdio"  # stdio, sse, or streamable-http
+u2_mcp_http_host: "127.0.0.1"
+u2_mcp_http_port: 8080
+
+# U2 Database connection defaults
+u2_host: "localhost"
+u2_user: "admin"
+u2_password: ""
+u2_account: "DEMO"
+u2_service: "uvcs"
+u2_port: 31438
+u2_ssl: false
+u2_timeout: 30
+
+# Safety settings
+u2_read_only: false
+u2_max_records: 10000
+u2_blocked_commands: "DELETE.FILE,CLEAR.FILE,CNAME,CREATE.FILE"
+
+# Logging
+u2_mcp_log_level: "INFO"

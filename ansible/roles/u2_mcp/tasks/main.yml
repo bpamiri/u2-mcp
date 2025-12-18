@@ -1,0 +1,92 @@
+---
+# Main tasks for u2_mcp role
+
+- name: Include OS-specific variables
+  ansible.builtin.include_vars: "{{ item }}"
+  with_first_found:
+    - "{{ ansible_distribution | lower }}-{{ ansible_distribution_major_version }}.yml"
+    - "{{ ansible_distribution | lower }}.yml"
+    - "{{ ansible_os_family | lower }}.yml"
+    - "default.yml"
+  tags: [always]
+
+- name: Install system dependencies
+  ansible.builtin.package:
+    name: "{{ u2_mcp_system_packages }}"
+    state: present
+  tags: [packages]
+
+- name: Create u2-mcp group
+  ansible.builtin.group:
+    name: "{{ u2_mcp_group }}"
+    system: true
+    state: present
+  tags: [user]
+
+- name: Create u2-mcp user
+  ansible.builtin.user:
+    name: "{{ u2_mcp_user }}"
+    group: "{{ u2_mcp_group }}"
+    home: "{{ u2_mcp_home }}"
+    shell: /bin/bash
+    system: true
+    create_home: true
+    state: present
+  tags: [user]
+
+- name: Create configuration directory
+  ansible.builtin.file:
+    path: "{{ u2_mcp_config_dir }}"
+    state: directory
+    owner: "{{ u2_mcp_user }}"
+    group: "{{ u2_mcp_group }}"
+    mode: "0750"
+  tags: [config]
+
+- name: Create Python virtual environment
+  ansible.builtin.pip:
+    name: pip
+    state: latest
+    virtualenv: "{{ u2_mcp_venv }}"
+    virtualenv_command: "{{ python_version }} -m venv"
+  become_user: "{{ u2_mcp_user }}"
+  tags: [install]
+
+- name: Install u2-mcp package
+  ansible.builtin.pip:
+    name: "u2-mcp{% if u2_mcp_version != 'latest' %}=={{ u2_mcp_version }}{% endif %}"
+    state: "{{ 'latest' if u2_mcp_version == 'latest' else 'present' }}"
+    virtualenv: "{{ u2_mcp_venv }}"
+  become_user: "{{ u2_mcp_user }}"
+  notify: Restart u2-mcp
+  tags: [install]
+
+- name: Deploy environment configuration
+  ansible.builtin.template:
+    src: env.j2
+    dest: "{{ u2_mcp_config_dir }}/.env"
+    owner: "{{ u2_mcp_user }}"
+    group: "{{ u2_mcp_group }}"
+    mode: "0600"
+  notify: Restart u2-mcp
+  tags: [config]
+
+- name: Deploy systemd service
+  ansible.builtin.template:
+    src: u2-mcp.service.j2
+    dest: /etc/systemd/system/{{ u2_mcp_service_name }}.service
+    owner: root
+    group: root
+    mode: "0644"
+  notify:
+    - Reload systemd
+    - Restart u2-mcp
+  tags: [service]
+
+- name: Ensure u2-mcp service is enabled and started
+  ansible.builtin.systemd:
+    name: "{{ u2_mcp_service_name }}"
+    enabled: true
+    state: started
+    daemon_reload: true
+  tags: [service]

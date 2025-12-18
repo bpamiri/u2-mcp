@@ -1,0 +1,15 @@
+---
+# Test inventory for local testing
+all:
+  children:
+    mcp_servers:
+      hosts:
+        localhost:
+          ansible_connection: local
+          ansible_python_interpreter: /usr/bin/python3
+
+          # Test U2 connection settings (replace with your actual values)
+          u2_host: "test-server.example.com"
+          u2_user: "testuser"
+          u2_password: "testpassword"
+          u2_account: "TEST"

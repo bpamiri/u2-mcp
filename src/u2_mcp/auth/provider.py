@@ -431,7 +431,7 @@ class U2OAuthProvider(
         self.storage.store_auth_code(stored_code)
 
         # Build redirect URL to Claude's callback (use Claude's original state)
-        redirect_url = construct_redirect_uri(
+        redirect_url: str = construct_redirect_uri(
             pending.claude_redirect_uri,
             code=auth_code,
             state=pending.claude_state,

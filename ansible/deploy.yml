@@ -1,0 +1,40 @@
+---
+# u2-mcp Server Deployment Playbook
+# Usage: ansible-playbook -i inventory/hosts.yml deploy.yml
+
+- name: Deploy u2-mcp server
+  hosts: mcp_servers
+  become: true
+  gather_facts: true
+
+  vars_prompt:
+    - name: u2_password_prompt
+      prompt: "Enter U2 database password (or use vault)"
+      private: true
+      default: "{{ vault_u2_password | default('') }}"
+
+  pre_tasks:
+    - name: Set U2 password from prompt if provided
+      ansible.builtin.set_fact:
+        u2_password: "{{ u2_password_prompt }}"
+      when: u2_password_prompt | length > 0
+      no_log: true
+
+  roles:
+    - role: u2_mcp
+      tags: [u2_mcp]
+
+  post_tasks:
+    - name: Display service status
+      ansible.builtin.systemd:
+        name: u2-mcp
+      register: service_status
+
+    - name: Show deployment summary
+      ansible.builtin.debug:
+        msg: |
+          Deployment complete!
+          Service: u2-mcp
+          Status: {{ service_status.status.ActiveState }}
+          Config: /etc/u2-mcp/.env
+          Logs: journalctl -u u2-mcp -f

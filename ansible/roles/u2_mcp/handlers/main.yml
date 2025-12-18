@@ -1,0 +1,11 @@
+---
+# Handlers for u2_mcp role
+
+- name: Reload systemd
+  ansible.builtin.systemd:
+    daemon_reload: true
+
+- name: Restart u2-mcp
+  ansible.builtin.systemd:
+    name: "{{ u2_mcp_service_name }}"
+    state: restarted
