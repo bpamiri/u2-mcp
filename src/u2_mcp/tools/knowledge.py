@@ -56,7 +56,8 @@ def list_knowledge() -> dict[str, Any]:
     """List all saved knowledge topics.
 
     Returns a list of topics that have been saved about this database.
-    Use get_knowledge_topic to retrieve the full content of a specific topic.
+    Use get_knowledge_topic to retrieve the full content of a specific topic,
+    or get_all_knowledge to retrieve everything at once.
 
     Returns:
         Dictionary containing list of topics with summaries.
@@ -71,6 +72,39 @@ def list_knowledge() -> dict[str, Any]:
         }
     except Exception as e:
         logger.error(f"Error listing knowledge: {e}")
+        return {"status": "error", "error": str(e)}
+
+
+@mcp.tool()
+def get_all_knowledge() -> dict[str, Any]:
+    """Get ALL saved knowledge about this Universe database.
+
+    IMPORTANT: Call this tool at the start of conversations to retrieve
+    previously learned information about the database. This includes:
+    - File descriptions and purposes
+    - Field definitions and meanings
+    - Working query patterns
+    - Relationships between files
+    - Data format notes and conventions
+
+    This knowledge was saved from previous conversations to help you
+    work more efficiently with this specific database.
+
+    Returns:
+        All saved knowledge as markdown text.
+    """
+    try:
+        store = get_knowledge_store()
+        content = store.get_all()
+        topics = store.list_topics()
+        return {
+            "status": "success",
+            "knowledge": content,
+            "topic_count": len(topics),
+            "topics": [t["topic"] for t in topics],
+        }
+    except Exception as e:
+        logger.error(f"Error getting all knowledge: {e}")
         return {"status": "error", "error": str(e)}
 
 

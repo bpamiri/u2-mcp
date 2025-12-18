@@ -132,16 +132,35 @@ def connect() -> dict[str, Any]:
     Returns:
         Connection status and details including host, account, service, and timestamp.
     """
+    from .utils.knowledge import get_knowledge_store
+
     try:
         manager = get_connection_manager()
         info = manager.connect()
-        return {
+
+        # Check for available knowledge
+        store = get_knowledge_store()
+        topics = store.list_topics()
+        knowledge_hint = None
+        if topics:
+            topic_names = [t["topic"] for t in topics]
+            knowledge_hint = (
+                f"Previous knowledge available ({len(topics)} topics): {', '.join(topic_names)}. "
+                "Call get_all_knowledge() to retrieve learned information about this database."
+            )
+
+        result: dict[str, Any] = {
             "status": "connected",
             "host": info.host,
             "account": info.account,
             "service": info.service,
             "connected_at": info.connected_at.isoformat(),
         }
+
+        if knowledge_hint:
+            result["knowledge_available"] = knowledge_hint
+
+        return result
     except ConnectionError as e:
         return {"status": "error", "message": str(e)}
     except Exception as e:
