@@ -27,6 +27,45 @@ class KnowledgeStore:
         self.path = Path(path) if path else DEFAULT_KNOWLEDGE_PATH
         self._ensure_directory()
 
+    def _normalize_topic(self, topic: str) -> str:
+        """Normalize a topic name for consistent matching.
+
+        Removes leading ## prefix, strips whitespace, and normalizes case.
+        """
+        # Remove leading ## if present
+        topic = re.sub(r"^#+\s*", "", topic.strip())
+        return topic.strip()
+
+    def _find_similar_topic(self, topic: str) -> str | None:
+        """Find an existing topic that matches or is similar to the given topic.
+
+        Uses normalized matching to find topics like:
+        - "CUST-MAST file" matches "CUST-MAST - Customer Master"
+        - "INV-MAST" matches "INV-MAST - Inventory Master"
+
+        Returns the existing topic name if found, None otherwise.
+        """
+        normalized = self._normalize_topic(topic).lower()
+        existing_topics = [t["topic"] for t in self.list_topics()]
+
+        # First try exact match (case-insensitive)
+        for existing in existing_topics:
+            if existing.lower() == normalized:
+                return existing
+
+        # Extract the file name pattern (e.g., "CUST-MAST" from "CUST-MAST file")
+        # Match patterns like "WORD-WORD" at the start
+        file_pattern = re.match(r"^([A-Z][\w-]+)", normalized, re.IGNORECASE)
+        if file_pattern:
+            file_name = file_pattern.group(1).lower()
+            for existing in existing_topics:
+                existing_lower = existing.lower()
+                # Check if the file name is at the start of an existing topic
+                if existing_lower.startswith(file_name):
+                    return existing
+
+        return None
+
     def _ensure_directory(self) -> None:
         """Create the knowledge directory if it doesn't exist."""
         self.path.parent.mkdir(parents=True, exist_ok=True)
@@ -97,6 +136,12 @@ class KnowledgeStore:
         if not content:
             return None
 
+        # Normalize and find similar topic
+        topic = self._normalize_topic(topic)
+        similar_topic = self._find_similar_topic(topic)
+        if similar_topic:
+            topic = similar_topic
+
         # Find the topic section
         pattern = rf"^## {re.escape(topic)}$"
         lines = content.split("\n")
@@ -132,6 +177,15 @@ class KnowledgeStore:
         """
         existing = self._read_file()
         timestamp = datetime.now().strftime("%Y-%m-%d %H:%M")
+
+        # Normalize the topic name
+        topic = self._normalize_topic(topic)
+
+        # Check if a similar topic already exists
+        similar_topic = self._find_similar_topic(topic)
+        if similar_topic:
+            # Use the existing topic name for consistency
+            topic = similar_topic
 
         # Check if topic exists
         pattern = rf"^## {re.escape(topic)}$"
@@ -193,6 +247,13 @@ class KnowledgeStore:
         if not content:
             return {"status": "error", "error": "No knowledge file exists"}
 
+        # Normalize and find similar topic
+        original_topic = topic
+        topic = self._normalize_topic(topic)
+        similar_topic = self._find_similar_topic(topic)
+        if similar_topic:
+            topic = similar_topic
+
         pattern = rf"^## {re.escape(topic)}$"
         lines = content.split("\n")
 
@@ -203,7 +264,7 @@ class KnowledgeStore:
                 break
 
         if topic_idx is None:
-            return {"status": "error", "error": f"Topic '{topic}' not found"}
+            return {"status": "error", "error": f"Topic '{original_topic}' not found"}
 
         # Find end of section
         end_idx = len(lines)
