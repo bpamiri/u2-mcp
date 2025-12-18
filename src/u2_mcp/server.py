@@ -12,6 +12,7 @@ from mcp.server.fastmcp import FastMCP
 from .config import U2Config
 from .connection import ConnectionError, ConnectionManager
 from .utils.audit import audit_tool_call, get_audit_logger, init_audit_logger
+from .utils.watchdog import ConnectionWatchdog, get_watchdog, init_watchdog
 
 # Configure logging
 logging.basicConfig(
@@ -49,6 +50,32 @@ def reset_connection_manager() -> None:
     if _connection_manager is not None:
         _connection_manager.disconnect_all()
     _connection_manager = None
+
+
+def _init_watchdog(config: U2Config) -> ConnectionWatchdog | None:
+    """Initialize the connection watchdog.
+
+    Args:
+        config: U2Config with watchdog settings
+
+    Returns:
+        ConnectionWatchdog instance or None if disabled
+    """
+    if not config.watchdog_enabled:
+        logger.info("Connection watchdog disabled")
+        return None
+
+    manager = get_connection_manager()
+
+    def health_check() -> bool:
+        return manager.health_check()
+
+    def force_disconnect() -> None:
+        manager.force_disconnect()
+
+    watchdog = init_watchdog(config, health_check, force_disconnect)
+    logger.info("Connection watchdog initialized")
+    return watchdog
 
 
 def _init_audit_logging(config: U2Config) -> None:
@@ -216,6 +243,26 @@ def list_connections() -> dict[str, Any]:
         return {"status": "error", "message": str(e)}
 
 
+@mcp.tool()
+def watchdog_status() -> dict[str, Any]:
+    """Get the connection watchdog status and statistics.
+
+    The watchdog monitors connection health and automatically recovers
+    from hung database connections.
+
+    Returns:
+        Watchdog configuration and statistics including check counts,
+        failure counts, and forced reconnects.
+    """
+    watchdog = get_watchdog()
+    if watchdog is None:
+        return {
+            "status": "disabled",
+            "message": "Watchdog not initialized or disabled",
+        }
+    return watchdog.get_status()
+
+
 # =============================================================================
 # Import and register tools from submodules
 # =============================================================================
@@ -376,6 +423,9 @@ def run_streamable_http_server() -> None:
         # Add route to the app's router
         app.routes.append(Route("/oauth/callback", oauth_callback_handler, methods=["GET"]))
 
+    # Initialize the connection watchdog
+    watchdog = _init_watchdog(config)
+
     logger.info(
         f"Starting U2 MCP Server (Streamable HTTP) on {config.http_host}:{config.http_port}"
     )
@@ -384,6 +434,32 @@ def run_streamable_http_server() -> None:
         logger.info("OAuth endpoints: /authorize, /token, /register, /.well-known/*")
         logger.info("OAuth callback: /oauth/callback")
     logger.info(f"CORS origins: {config.http_cors_origins}")
+
+    # Run uvicorn with watchdog in background
+    import threading
+
+    def run_watchdog_sync() -> None:
+        """Run the watchdog in a separate thread with its own event loop."""
+        import asyncio
+
+        async def watchdog_main() -> None:
+            if watchdog:
+                await watchdog.start()
+                # Keep running until stopped
+                while watchdog.is_running:
+                    await asyncio.sleep(1)
+
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        try:
+            loop.run_until_complete(watchdog_main())
+        finally:
+            loop.close()
+
+    if watchdog:
+        watchdog_thread = threading.Thread(target=run_watchdog_sync, daemon=True)
+        watchdog_thread.start()
+        logger.info("Watchdog thread started")
 
     uvicorn.run(
         app,

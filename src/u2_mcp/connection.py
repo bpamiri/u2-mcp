@@ -297,6 +297,51 @@ class ConnectionManager:
         session = self.get_session()
         return uopy.List(session=session)
 
+    def health_check(self) -> bool:
+        """Perform a quick health check on the connection.
+
+        Executes a minimal TCL command to verify the connection is responsive.
+
+        Returns:
+            True if connection is healthy, False otherwise
+        """
+        if self._session is None:
+            return True  # No connection to check
+
+        try:
+            # Use a minimal command that should return quickly
+            cmd = uopy.Command("WHO", session=self._session)
+            cmd.run()
+            return True
+        except Exception as e:
+            logger.warning(f"Health check failed: {e}")
+            return False
+
+    def force_disconnect(self) -> None:
+        """Force disconnect the current connection without cleanup.
+
+        Used by the watchdog to reset a hung connection.
+        """
+        logger.warning("Force disconnecting database connection")
+        try:
+            if self._session:
+                try:
+                    self._session.close()
+                except Exception:
+                    pass  # Ignore errors during force close
+                self._session = None
+
+            # Clear all cached state
+            self._open_files.clear()
+            self._connections.clear()
+            self._transaction = TransactionState()
+
+        except Exception as e:
+            logger.error(f"Error during force disconnect: {e}")
+        finally:
+            # Ensure session is cleared even if errors occur
+            self._session = None
+
     def begin_transaction(self) -> bool:
         """Begin a database transaction.
 

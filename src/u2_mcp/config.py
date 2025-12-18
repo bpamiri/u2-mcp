@@ -160,6 +160,28 @@ class U2Config(BaseSettings):
         description="Refresh token expiry time in seconds",
     )
 
+    # Connection watchdog settings
+    watchdog_enabled: bool = Field(
+        default=True,
+        alias="U2_WATCHDOG_ENABLED",
+        description="Enable connection health monitoring watchdog",
+    )
+    watchdog_interval: int = Field(
+        default=30,
+        alias="U2_WATCHDOG_INTERVAL",
+        description="Watchdog check interval in seconds",
+    )
+    watchdog_timeout: int = Field(
+        default=10,
+        alias="U2_WATCHDOG_TIMEOUT",
+        description="Timeout for health check operations in seconds",
+    )
+    watchdog_max_failures: int = Field(
+        default=3,
+        alias="U2_WATCHDOG_MAX_FAILURES",
+        description="Max consecutive failures before forcing reconnect",
+    )
+
     # Audit logging settings
     audit_enabled: bool = Field(
         default=False,
