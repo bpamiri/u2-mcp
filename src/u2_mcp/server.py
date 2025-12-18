@@ -1,13 +1,17 @@
 """Main MCP server entry point for u2-mcp."""
 
 import argparse
+import functools
 import logging
-from typing import Any
+import time
+from collections.abc import Callable
+from typing import Any, TypeVar
 
 from mcp.server.fastmcp import FastMCP
 
 from .config import U2Config
 from .connection import ConnectionError, ConnectionManager
+from .utils.audit import audit_tool_call, get_audit_logger, init_audit_logger
 
 # Configure logging
 logging.basicConfig(
@@ -15,6 +19,9 @@ logging.basicConfig(
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
 )
 logger = logging.getLogger(__name__)
+
+# Type variable for generic function wrapping
+F = TypeVar("F", bound=Callable[..., Any])
 
 # Create FastMCP server instance
 mcp = FastMCP("U2 MCP Server")
@@ -42,6 +49,68 @@ def reset_connection_manager() -> None:
     if _connection_manager is not None:
         _connection_manager.disconnect_all()
     _connection_manager = None
+
+
+def _init_audit_logging(config: U2Config) -> None:
+    """Initialize audit logging if enabled.
+
+    Args:
+        config: U2Config instance with audit settings
+    """
+    if config.audit_enabled:
+        init_audit_logger(
+            audit_path=config.audit_path,
+            include_results=config.audit_include_results,
+            max_result_size=config.audit_max_result_size,
+        )
+        logger.info(f"Audit logging enabled, writing to {config.audit_path}")
+
+
+def _wrap_tools_with_audit(mcp_instance: FastMCP) -> None:
+    """Wrap all registered tools with audit logging.
+
+    Args:
+        mcp_instance: The FastMCP instance with registered tools
+    """
+    audit_logger = get_audit_logger()
+    if not audit_logger:
+        return
+
+    # Start a new audit session
+    audit_logger.start_session()
+
+    # Wrap each tool's function with audit logging
+    for tool_name, tool in mcp_instance._tool_manager._tools.items():
+        original_fn = tool.fn
+
+        @functools.wraps(original_fn)
+        def wrapped_fn(
+            *args: Any,
+            _original_fn: Callable[..., Any] = original_fn,
+            _tool_name: str = tool_name,
+            **kwargs: Any,
+        ) -> Any:
+            start_time = time.time()
+            error_msg = None
+            result = None
+
+            try:
+                result = _original_fn(*args, **kwargs)
+                return result
+            except Exception as e:
+                error_msg = str(e)
+                raise
+            finally:
+                duration_ms = (time.time() - start_time) * 1000
+                audit_tool_call(
+                    tool_name=_tool_name,
+                    parameters=kwargs,
+                    result=result,
+                    error=error_msg,
+                    duration_ms=duration_ms,
+                )
+
+        tool.fn = wrapped_fn
 
 
 # =============================================================================
@@ -150,6 +219,10 @@ def run_sse_server() -> None:
 
     config = U2Config()
 
+    # Initialize audit logging if enabled
+    _init_audit_logging(config)
+    _wrap_tools_with_audit(mcp)
+
     # Get the SSE app from FastMCP
     app = mcp.sse_app()
 
@@ -193,6 +266,9 @@ def run_streamable_http_server() -> None:
     from .auth.provider import U2OAuthProvider
 
     config = U2Config()
+
+    # Initialize audit logging if enabled
+    _init_audit_logging(config)
 
     # Create OAuth provider if auth is enabled
     auth_provider = None
@@ -254,6 +330,9 @@ def run_streamable_http_server() -> None:
 
     # Copy prompts if any (directly copy the dict)
     mcp_streamable._prompt_manager._prompts.update(mcp._prompt_manager._prompts)
+
+    # Wrap tools with audit logging if enabled
+    _wrap_tools_with_audit(mcp_streamable)
 
     # Get the Streamable HTTP app
     app = mcp_streamable.streamable_http_app()
@@ -340,6 +419,11 @@ def main() -> None:
     elif args.http:
         run_sse_server()
     else:
+        # Initialize audit logging for stdio mode
+        config = U2Config()
+        _init_audit_logging(config)
+        _wrap_tools_with_audit(mcp)
+
         logger.info("Starting U2 MCP Server (stdio mode)")
         mcp.run()
 

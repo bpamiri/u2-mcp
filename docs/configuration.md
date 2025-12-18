@@ -36,6 +36,27 @@ These must be set for the server to connect:
 |----------|-------------|---------|
 | `U2_KNOWLEDGE_PATH` | Path to knowledge file | `~/.u2-mcp/knowledge.md` |
 
+## Audit Logging
+
+Enable audit logging to capture all MCP tool calls for analysis and debugging.
+
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `U2_AUDIT_ENABLED` | Enable audit logging | `false` |
+| `U2_AUDIT_PATH` | Directory for audit log files | `/var/log/u2-mcp/audit` |
+| `U2_AUDIT_INCLUDE_RESULTS` | Include tool results in logs | `true` |
+| `U2_AUDIT_MAX_RESULT_SIZE` | Max characters for results (truncates if larger) | `10000` |
+
+Audit logs are written as JSONL (JSON Lines) files, one per day (`audit-YYYY-MM-DD.jsonl`). Each line contains:
+- `event`: Type of event (session_start, tool_call, session_end, error)
+- `timestamp`: ISO format timestamp
+- `session_id`: Session identifier
+- `tool`: Tool name (for tool_call events)
+- `parameters`: Tool parameters (sensitive values redacted)
+- `result`: Tool result (if include_results is enabled)
+- `duration_ms`: Execution time in milliseconds
+- `status`: success or error
+
 ## HTTP Server Settings
 
 Used when running in HTTP/SSE mode (`--http` flag) or Streamable HTTP mode (`--streamable-http` flag):

@@ -160,6 +160,28 @@ class U2Config(BaseSettings):
         description="Refresh token expiry time in seconds",
     )
 
+    # Audit logging settings
+    audit_enabled: bool = Field(
+        default=False,
+        alias="U2_AUDIT_ENABLED",
+        description="Enable audit logging of all MCP tool calls",
+    )
+    audit_path: str = Field(
+        default="/var/log/u2-mcp/audit",
+        alias="U2_AUDIT_PATH",
+        description="Directory path for audit log files",
+    )
+    audit_include_results: bool = Field(
+        default=True,
+        alias="U2_AUDIT_INCLUDE_RESULTS",
+        description="Include tool results in audit logs (may contain sensitive data)",
+    )
+    audit_max_result_size: int = Field(
+        default=10000,
+        alias="U2_AUDIT_MAX_RESULT_SIZE",
+        description="Maximum characters to log for tool results (truncates if larger)",
+    )
+
     @computed_field  # type: ignore[prop-decorator]  # pydantic pattern
     @property
     def blocked_commands(self) -> list[str]:
