@@ -260,6 +260,7 @@ class ConnectionManager:
         """Clean up Universe output for display.
 
         Removes/replaces control characters that cause display issues.
+        Converts MultiValue delimiters to readable representations.
 
         Args:
             text: Raw output from Universe
@@ -271,15 +272,19 @@ class ConnectionManager:
         text = text.replace("\r\n", "\n").replace("\r", "\n")
         # Remove form feeds (page breaks)
         text = text.replace("\f", "\n")
+
+        # Convert MultiValue delimiters to readable text
+        # AM (chr 254) = field/attribute separator -> newline
+        # VM (chr 253) = multivalue separator -> pipe
+        # SM (chr 252) = subvalue separator -> semicolon
+        text = text.replace(chr(254), "\n")  # AM -> newline
+        text = text.replace(chr(253), " | ")  # VM -> pipe
+        text = text.replace(chr(252), " ; ")  # SM -> semicolon
+
         # Remove other control characters except newline and tab
         cleaned = []
         for char in text:
-            if (
-                char == "\n"
-                or char == "\t"
-                or (ord(char) >= 32 and ord(char) < 127)
-                or ord(char) >= 128
-            ):
+            if char == "\n" or char == "\t" or (ord(char) >= 32 and ord(char) < 127):
                 cleaned.append(char)
         return "".join(cleaned)
 
