@@ -20,6 +20,7 @@ class StoredClient:
     grant_types: list[str]
     response_types: list[str]
     scope: str | None
+    token_endpoint_auth_method: str = "client_secret_post"  # Default auth method
     created_at: float = field(default_factory=time.time)
     metadata: dict[str, Any] = field(default_factory=dict)
 
@@ -59,13 +60,14 @@ class StoredToken:
 class PendingAuthorization:
     """State for in-progress authorization flow."""
 
-    state: str
+    state: str  # Internal state for IdP redirect
     client_id: str
     redirect_uri: str
     scope: str
     code_challenge: str | None
     code_challenge_method: str | None
     claude_redirect_uri: str  # Where to redirect after IdP auth
+    claude_state: str | None  # Claude's original state to return
     created_at: float = field(default_factory=time.time)
     expires_at: float = field(default_factory=lambda: time.time() + 600)
 

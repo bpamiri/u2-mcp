@@ -220,7 +220,7 @@ def run_streamable_http_server() -> None:
         # Configure auth settings for FastMCP
         auth_settings = AuthSettings(
             issuer_url=config.auth_issuer_url,
-            resource_server_url=f"{config.auth_issuer_url}/mcp",
+            resource_server_url=config.auth_issuer_url,
             client_registration_options=ClientRegistrationOptions(
                 enabled=True,  # Required for Claude.ai DCR
                 valid_scopes=["u2:read", "u2:write"],
@@ -240,22 +240,20 @@ def run_streamable_http_server() -> None:
         auth=auth_settings,
         host=config.http_host,
         port=config.http_port,
-        streamable_http_path="/mcp",
+        streamable_http_path="/",  # Root path for Claude.ai compatibility
     )
 
     # Copy tools from the original mcp instance
     # Tools are registered via decorators on the module-level 'mcp' instance
-    # We need to manually register them on the new instance
-    for tool in mcp._tool_manager._tools.values():
-        mcp_streamable._tool_manager.add_tool(tool)
+    # We need to copy them to the new instance (directly copy the dict, not via add_tool
+    # since add_tool expects functions, not Tool objects)
+    mcp_streamable._tool_manager._tools.update(mcp._tool_manager._tools)
 
-    # Copy resources
-    for resource in mcp._resource_manager._resources.values():
-        mcp_streamable._resource_manager.add_resource(resource)
+    # Copy resources (directly copy the dict)
+    mcp_streamable._resource_manager._resources.update(mcp._resource_manager._resources)
 
-    # Copy prompts if any
-    for prompt in mcp._prompt_manager._prompts.values():
-        mcp_streamable._prompt_manager.add_prompt(prompt)
+    # Copy prompts if any (directly copy the dict)
+    mcp_streamable._prompt_manager._prompts.update(mcp._prompt_manager._prompts)
 
     # Get the Streamable HTTP app
     app = mcp_streamable.streamable_http_app()
@@ -283,7 +281,7 @@ def run_streamable_http_server() -> None:
     logger.info(
         f"Starting U2 MCP Server (Streamable HTTP) on {config.http_host}:{config.http_port}"
     )
-    logger.info(f"MCP endpoint: http://{config.http_host}:{config.http_port}/mcp")
+    logger.info(f"MCP endpoint: http://{config.http_host}:{config.http_port}/")
     if config.auth_enabled:
         logger.info("OAuth endpoints: /authorize, /token, /register, /.well-known/*")
         logger.info("OAuth callback: /oauth/callback")

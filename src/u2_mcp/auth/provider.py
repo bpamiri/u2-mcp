@@ -98,6 +98,7 @@ class U2OAuthProvider(
             grant_types=stored.grant_types,
             response_types=stored.response_types,
             scope=stored.scope,
+            token_endpoint_auth_method=stored.token_endpoint_auth_method,
             client_id_issued_at=int(stored.created_at),
         )
 
@@ -125,6 +126,7 @@ class U2OAuthProvider(
             grant_types=list(client_info.grant_types),
             response_types=list(client_info.response_types),
             scope=client_info.scope,
+            token_endpoint_auth_method=client_info.token_endpoint_auth_method or "client_secret_post",
         )
 
         self.storage.store_client(stored)
@@ -161,6 +163,7 @@ class U2OAuthProvider(
             code_challenge=params.code_challenge,
             code_challenge_method="S256",  # We always use S256
             claude_redirect_uri=str(params.redirect_uri),
+            claude_state=params.state,  # Store Claude's original state to return later
         )
         self.storage.store_pending_auth(pending)
 
@@ -425,11 +428,11 @@ class U2OAuthProvider(
         )
         self.storage.store_auth_code(stored_code)
 
-        # Build redirect URL to Claude's callback
+        # Build redirect URL to Claude's callback (use Claude's original state)
         redirect_url = construct_redirect_uri(
             pending.claude_redirect_uri,
             code=auth_code,
-            state=state,
+            state=pending.claude_state,
         )
 
         logger.info(f"IdP callback successful for user {user_info.subject}")
