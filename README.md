@@ -272,6 +272,41 @@ http://your-server:8080/sse
 - Future Claude Desktop versions with remote server support
 - Integration with other AI tools that support MCP over HTTP
 
+## Claude.ai Integration (Streamable HTTP + OAuth)
+
+Deploy u2-mcp as a Custom Connector in Claude.ai with enterprise authentication via your identity provider (Duo, Auth0, Okta, etc.).
+
+### Quick Setup
+
+1. **Deploy u2-mcp** with OAuth enabled:
+
+```bash
+u2-mcp --streamable-http --host 0.0.0.0 --port 8080
+```
+
+2. **Configure OAuth** in your `.env`:
+
+```bash
+U2_AUTH_ENABLED=true
+U2_AUTH_ISSUER_URL=https://u2-mcp.example.com
+U2_IDP_PROVIDER=duo
+U2_IDP_DISCOVERY_URL=https://sso-xxx.sso.duosecurity.com/oidc/CLIENT_ID/.well-known/openid-configuration
+U2_IDP_CLIENT_ID=your_client_id
+U2_IDP_CLIENT_SECRET=your_client_secret
+```
+
+3. **Add to Claude.ai**: Go to Settings → Connectors → Add Custom Connector → Enter your URL
+
+Users authenticate through your IdP and can then query your database directly from Claude.ai.
+
+### Supported Identity Providers
+
+- **Cisco Duo** - Enterprise MFA and SSO
+- **Auth0** - Flexible identity platform
+- **Any OIDC Provider** - Okta, Azure AD, Google Workspace, Keycloak, etc.
+
+See the [OAuth Guide](docs/oauth.md) for detailed setup instructions.
+
 ## Security
 
 - Credentials are never logged
@@ -296,6 +331,7 @@ We welcome contributions! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for guid
 - [Configuration Reference](docs/configuration.md) - All environment variables
 - [Tools Reference](docs/tools.md) - Complete tool documentation
 - [Usage Examples](docs/examples.md) - Common usage patterns
+- [OAuth & Claude.ai Integration](docs/oauth.md) - Deploy as a Claude.ai Custom Connector
 
 ## License
 

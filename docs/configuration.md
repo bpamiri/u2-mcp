@@ -38,13 +38,30 @@ These must be set for the server to connect:
 
 ## HTTP Server Settings
 
-Used when running in HTTP/SSE mode (`--http` flag):
+Used when running in HTTP/SSE mode (`--http` flag) or Streamable HTTP mode (`--streamable-http` flag):
 
 | Variable | Description | Default |
 |----------|-------------|---------|
 | `U2_HTTP_HOST` | Host to bind HTTP server to | `0.0.0.0` |
 | `U2_HTTP_PORT` | Port for HTTP server | `8080` |
 | `U2_HTTP_CORS_ORIGINS` | Allowed CORS origins (comma-separated or `*`) | `*` |
+
+## OAuth / Claude.ai Integration Settings
+
+Used when deploying as a Claude.ai Custom Connector with OAuth authentication. See [OAuth Guide](oauth.md) for detailed setup instructions.
+
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `U2_AUTH_ENABLED` | Enable OAuth authentication | `false` |
+| `U2_AUTH_ISSUER_URL` | Public URL of this server (e.g., `https://u2-mcp.example.com`) | None |
+| `U2_IDP_PROVIDER` | Identity provider type: `duo`, `auth0`, or `oidc` | `oidc` |
+| `U2_IDP_DISCOVERY_URL` | OIDC discovery URL (`.well-known/openid-configuration`) | None |
+| `U2_IDP_CLIENT_ID` | Client ID from your identity provider | None |
+| `U2_IDP_CLIENT_SECRET` | Client secret from your identity provider | None |
+| `U2_IDP_SCOPES` | Scopes to request from IdP (space-separated) | `openid profile email` |
+| `U2_DUO_API_HOST` | Duo API hostname (alternative to discovery URL) | None |
+| `U2_TOKEN_EXPIRY_SECONDS` | Access token lifetime in seconds | `3600` |
+| `U2_REFRESH_TOKEN_EXPIRY_SECONDS` | Refresh token lifetime in seconds | `2592000` (30 days) |
 
 ## Configuration Examples
 
@@ -111,6 +128,30 @@ export U2_HTTP_HOST=0.0.0.0
 export U2_HTTP_PORT=3000
 export U2_HTTP_CORS_ORIGINS=https://app.example.com,https://admin.example.com
 export U2_READ_ONLY=true
+```
+
+### Claude.ai Integration with Duo OAuth
+
+```bash
+# Database Connection
+export U2_HOST=universe.example.com
+export U2_USER=mcp_user
+export U2_PASSWORD=password
+export U2_ACCOUNT=PRODUCTION
+
+# OAuth Configuration
+export U2_AUTH_ENABLED=true
+export U2_AUTH_ISSUER_URL=https://u2-mcp.example.com
+
+# Duo Identity Provider
+export U2_IDP_PROVIDER=duo
+export U2_IDP_DISCOVERY_URL=https://sso-abc123.sso.duosecurity.com/oidc/YOUR_CLIENT_ID/.well-known/openid-configuration
+export U2_IDP_CLIENT_ID=YOUR_CLIENT_ID
+export U2_IDP_CLIENT_SECRET=YOUR_CLIENT_SECRET
+export U2_IDP_SCOPES="openid profile email groups"
+
+# CORS for Claude.ai
+export U2_HTTP_CORS_ORIGINS=https://claude.ai,https://*.claude.ai
 ```
 
 ## Claude Desktop Config
