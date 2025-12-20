@@ -40,6 +40,18 @@ Instead of writing RetrieVe queries, just ask Claude:
 
 **New to MCP?** See [What is MCP?](docs/what-is-mcp.md) for a complete explanation.
 
+## Documentation
+
+| Guide | Description |
+|-------|-------------|
+| [What is MCP?](docs/what-is-mcp.md) | Understanding MCP and how u2-mcp works |
+| [Installation](docs/installation.md) | Complete installation guide |
+| [Quickstart](docs/quickstart.md) | Get running in 10 minutes |
+| [Configuration](docs/configuration.md) | All configuration options |
+| [Tools Reference](docs/tools.md) | Detailed tool documentation |
+| [Usage Examples](docs/examples.md) | Common usage patterns |
+| [OAuth Setup](docs/oauth.md) | Claude.ai integration with SSO |
+
 ## Features
 
 - **Connection Management** - Connect to Universe/UniData servers with connection pooling and SSL support
