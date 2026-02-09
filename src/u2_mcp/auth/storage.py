@@ -111,6 +111,14 @@ class InMemoryAuthStorage:
         """Retrieve a client by ID."""
         return self._clients.get(client_id)
 
+    def find_client_by_redirect_uris(self, redirect_uris: list[str]) -> StoredClient | None:
+        """Find an existing client with matching redirect URIs."""
+        uri_set = set(redirect_uris)
+        for client in self._clients.values():
+            if set(client.redirect_uris) == uri_set:
+                return client
+        return None
+
     def delete_client(self, client_id: str) -> bool:
         """Delete a client and its tokens."""
         if client_id in self._clients:

@@ -106,6 +106,9 @@ class U2OAuthProvider(
         """Register a new OAuth client (DCR).
 
         Claude.ai uses DCR to register itself as a client.
+        Idempotent: if a client with the same redirect_uris already exists,
+        returns the existing credentials to handle re-registration during
+        the OAuth flow (Claude.ai may register multiple times).
         """
         # Validate redirect URIs
         if not client_info.redirect_uris:
@@ -113,6 +116,18 @@ class U2OAuthProvider(
                 error="invalid_redirect_uri",
                 error_description="At least one redirect_uri is required",
             )
+
+        redirect_uris = [str(uri) for uri in client_info.redirect_uris]
+
+        # Check for existing client with same redirect_uris (idempotent DCR)
+        existing = self.storage.find_client_by_redirect_uris(redirect_uris)
+        if existing:
+            # Return existing credentials to avoid client_id mismatch
+            client_info.client_id = existing.client_id
+            client_info.client_secret = existing.client_secret
+            client_info.client_id_issued_at = int(existing.created_at)
+            logger.info(f"Returning existing client: {existing.client_id} ({existing.client_name})")
+            return
 
         # Generate client credentials if not provided
         client_id = client_info.client_id or f"client_{secrets.token_urlsafe(16)}"
@@ -122,7 +137,7 @@ class U2OAuthProvider(
             client_id=client_id,
             client_secret=client_secret,
             client_name=client_info.client_name,
-            redirect_uris=[str(uri) for uri in client_info.redirect_uris],
+            redirect_uris=redirect_uris,
             grant_types=list(client_info.grant_types),
             response_types=list(client_info.response_types),
             scope=client_info.scope,

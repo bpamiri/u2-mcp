@@ -409,9 +409,7 @@ def run_streamable_http_server() -> None:
     from starlette.responses import Response as StarletteResponse
 
     class RequestLoggingMiddleware(BaseHTTPMiddleware):
-        async def dispatch(
-            self, request: StarletteRequest, call_next: Any
-        ) -> StarletteResponse:
+        async def dispatch(self, request: StarletteRequest, call_next: Any) -> StarletteResponse:
             auth_header = request.headers.get("authorization", "none")
             if auth_header != "none":
                 auth_header = auth_header[:20] + "..." if len(auth_header) > 20 else auth_header
@@ -421,9 +419,33 @@ def run_streamable_http_server() -> None:
                 f"origin={request.headers.get('origin', 'none')}"
             )
             response = await call_next(request)
-            logger.info(
-                f"RESPONSE: {request.method} {request.url.path} -> {response.status_code}"
+
+            # Capture response details for key endpoints
+            path = request.url.path
+            capture_body = (
+                path in ("/token", "/register")
+                or (response.status_code == 401 and path == "/")
+                or path.startswith("/.well-known/")
             )
+
+            if capture_body:
+                body = b""
+                async for chunk in response.body_iterator:
+                    body += chunk
+                resp_headers = dict(response.headers)
+                logger.info(
+                    f"RESPONSE: {request.method} {path} -> {response.status_code} "
+                    f"headers={resp_headers} "
+                    f"body={body.decode('utf-8', errors='replace')[:500]}"
+                )
+                return StarletteResponse(
+                    content=body,
+                    status_code=response.status_code,
+                    headers=resp_headers,
+                    media_type=response.media_type,
+                )
+
+            logger.info(f"RESPONSE: {request.method} {path} -> {response.status_code}")
             return response
 
     app.add_middleware(RequestLoggingMiddleware)
