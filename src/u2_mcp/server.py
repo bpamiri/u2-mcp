@@ -403,6 +403,31 @@ def run_streamable_http_server() -> None:
     # Get the Streamable HTTP app
     app = mcp_streamable.streamable_http_app()
 
+    # Add verbose request logging middleware for debugging
+    from starlette.middleware.base import BaseHTTPMiddleware
+    from starlette.requests import Request as StarletteRequest
+    from starlette.responses import Response as StarletteResponse
+
+    class RequestLoggingMiddleware(BaseHTTPMiddleware):
+        async def dispatch(
+            self, request: StarletteRequest, call_next: Any
+        ) -> StarletteResponse:
+            auth_header = request.headers.get("authorization", "none")
+            if auth_header != "none":
+                auth_header = auth_header[:20] + "..." if len(auth_header) > 20 else auth_header
+            logger.info(
+                f"REQUEST: {request.method} {request.url.path} "
+                f"auth={auth_header} "
+                f"origin={request.headers.get('origin', 'none')}"
+            )
+            response = await call_next(request)
+            logger.info(
+                f"RESPONSE: {request.method} {request.url.path} -> {response.status_code}"
+            )
+            return response
+
+    app.add_middleware(RequestLoggingMiddleware)
+
     # Add CORS middleware
     app.add_middleware(
         CORSMiddleware,
