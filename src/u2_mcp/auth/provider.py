@@ -166,6 +166,7 @@ class U2OAuthProvider(
             code_challenge_method="S256",  # We always use S256
             claude_redirect_uri=str(params.redirect_uri),
             claude_state=params.state,  # Store Claude's original state to return later
+            resource=str(params.resource) if params.resource else None,
         )
         self.storage.store_pending_auth(pending)
 
@@ -203,6 +204,7 @@ class U2OAuthProvider(
             code_challenge=stored.code_challenge or "",
             redirect_uri=stored.redirect_uri,
             redirect_uri_provided_explicitly=True,
+            resource=stored.resource,
         )
 
     async def exchange_authorization_code(
@@ -226,6 +228,7 @@ class U2OAuthProvider(
                 user_subject=authorization_code.client_id,  # Will be set properly in callback
                 scope=" ".join(authorization_code.scopes),
                 expires_at=access_expires,
+                resource=authorization_code.resource,
             )
         )
 
@@ -238,6 +241,7 @@ class U2OAuthProvider(
                 user_subject=authorization_code.client_id,
                 scope=" ".join(authorization_code.scopes),
                 expires_at=refresh_expires,
+                resource=authorization_code.resource,
             )
         )
 
@@ -272,6 +276,7 @@ class U2OAuthProvider(
             client_id=stored.client_id,
             scopes=stored.scope.split() if stored.scope else [],
             expires_at=int(stored.expires_at) if stored.expires_at else None,
+            resource=stored.resource,
         )
 
     async def exchange_refresh_token(
@@ -303,6 +308,7 @@ class U2OAuthProvider(
                 user_subject="",  # Preserved from original auth
                 scope=scope_str,
                 expires_at=access_expires,
+                resource=refresh_token.resource,
             )
         )
 
@@ -315,6 +321,7 @@ class U2OAuthProvider(
                 user_subject="",
                 scope=scope_str,
                 expires_at=refresh_expires,
+                resource=refresh_token.resource,
             )
         )
 
@@ -343,6 +350,7 @@ class U2OAuthProvider(
             client_id=stored.client_id,
             scopes=stored.scope.split() if stored.scope else [],
             expires_at=int(stored.expires_at) if stored.expires_at else None,
+            resource=stored.resource,
         )
 
     # -------------------------------------------------------------------------
@@ -427,6 +435,7 @@ class U2OAuthProvider(
             code_challenge_method=pending.code_challenge_method,
             user_subject=user_info.subject,
             user_claims=user_info.raw_claims or {},
+            resource=pending.resource,
         )
         self.storage.store_auth_code(stored_code)
 

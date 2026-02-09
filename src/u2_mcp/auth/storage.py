@@ -38,6 +38,7 @@ class StoredAuthCode:
     code_challenge_method: str | None
     user_subject: str  # User identifier from IdP
     user_claims: dict[str, Any]  # Claims from IdP
+    resource: str | None = None  # RFC 8707 resource indicator
     created_at: float = field(default_factory=time.time)
     expires_at: float = field(default_factory=lambda: time.time() + 600)  # 10 min
 
@@ -54,6 +55,7 @@ class StoredToken:
     created_at: float = field(default_factory=time.time)
     expires_at: float | None = None
     user_claims: dict[str, Any] = field(default_factory=dict)
+    resource: str | None = None  # RFC 8707 resource indicator
 
 
 @dataclass
@@ -68,6 +70,7 @@ class PendingAuthorization:
     code_challenge_method: str | None
     claude_redirect_uri: str  # Where to redirect after IdP auth
     claude_state: str | None  # Claude's original state to return
+    resource: str | None = None  # RFC 8707 resource indicator
     created_at: float = field(default_factory=time.time)
     expires_at: float = field(default_factory=lambda: time.time() + 600)
 
